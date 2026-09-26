@@ -3,61 +3,63 @@ name: Build Zero-Error Android APK
 on:
   push:
     branches:
-      - main # जब भी आप कोड पुश करेंगे, ऐप अपने आप बनना शुरू हो जाएगा
+      - main
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. गिटहब से आपका कोड उठाना (Path Error Fix)
+      # 1. गिटहब से आपका कोड और लोगो उठाना
       - name: Checkout Repository Code
         uses: actions/checkout@v4
 
-      # 2. JDK 17 को बिना किसी एरर के पक्का सेटअप करना
+      # 2. जावा JDK 17 को एकदम सटीक सेटअप करना
       - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. एन्ड्रोइड SDK टूल्स को रेडी करना
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      # 4. नोड जेएस (Node.js) को बैकएंड में चालू करना
+      # 3. नोड जेएस एनवायरनमेंट चालू करना
       - name: Set up Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 5. Apache Cordova ऐप कनवर्टर को इंस्टॉल करना
+      # 4. Apache Cordova को इंस्टॉल करना
       - name: Install Apache Cordova
         run: npm install -g cordova
-        # 6. नया एन्ड्रोइड प्रोजेक्ट पाथ बनाना और अपनी index.html को उसमें फिट करना
-      - name: Create Cordova Project and Setup Assets
+        # 5. नया प्रोजेक्ट बनाना, नाम और लोगो सेट करना (बिना SDK एरर के)
+      - name: Create Cordova Project with Name and Icon Setup
         run: |
-          cordova create billing-app com.kalpvruksha.billing BillingApp
+          cordova create billing-app com.kalpvruksha.billing "Kalpvruksha Billing"
           cd billing-app
           cordova platform add android
           rm -rf www/*
           cp ../index.html www/index.html
           
-      # 7. Gradle को कंप्यूटर सर्वर पर एक्जीक्यूट करने की पक्की परमिशन देना (Permission Error Fix)
+          # लोगो (icon.png) को सही जगह सेट करने का पक्का लॉजिक
+          if [ -f "../icon.png" ]; then
+            cp ../icon.png www/icon.png
+            sed -i '/<\/widget>/i \    <icon src="www/icon.png" />' config.xml
+          fi
+
+      # 6. गिटहब के इन-बिल्ट एन्ड्रोइड टूल्स को परमिशन देना
       - name: Grant Execute Permission for Gradle
         run: |
           cd billing-app/platforms/android
           chmod +x gradlew
 
-      # 8. बिना किसी एरर के फाइनल APK कंपाइल (Build) करना
+      # 7. फाइनल APK कंपाइल (Build) करना
       - name: Build Android Production APK
         run: |
           cd billing-app
           cordova build android --release
 
-      # 9. तैयार हुए असली APK ऐप को गिटहब पर आपके लिए अपलोड करना
-      - name: Upload and Release Finished APK File
+      # 8. तैयार हुआ असली APK ऐप अपलोड करना
+      - name: Upload Finished APK File
         uses: actions/upload-artifact@v4
         with:
-          name: Professional-Billing-App-APK
+          name: Kalpvruksha-Billing-App-APK
           path: billing-app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
