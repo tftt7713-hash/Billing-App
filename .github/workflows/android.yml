@@ -1,0 +1,37 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ] # Agar aapka default branch master hai, to yahan master likhein
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Repository se code checkout karna
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Java Environment (JDK 17) setup karna
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    # 3. Execution permission dena (Permission Denied error se bachne ke liye)
+    - name: Grant Execute Permission for Gradlew
+      run: chmod +x gradlew
+
+    # 4. APK Build karna
+    - name: Build with Gradle
+      run: ./gradlew assembleDebug
+
+    # 5. Build hue APK ko dhundh kar upload karna (Sabse safe tarika)
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: '**/build/outputs/apk/debug/*.apk' # Ye har tarike ke folder structure ko sambhal lega
