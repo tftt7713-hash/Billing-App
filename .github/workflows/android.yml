@@ -30,7 +30,7 @@ jobs:
       # 4. Apache Cordova को इंस्टॉल करना
       - name: Install Apache Cordova
         run: npm install -g cordova
-        # 5. नया प्रोजेक्ट बनाना, नाम और लोगो सेट करना (बिना SDK एरर के)
+        # 5. नया प्रोजेक्ट बनाना, नाम और लोगो सेट करना
       - name: Create Cordova Project with Name and Icon Setup
         run: |
           cordova create billing-app com.kalpvruksha.billing "Kalpvruksha Billing"
@@ -45,19 +45,26 @@ jobs:
             sed -i '/<\/widget>/i \    <icon src="www/icon.png" />' config.xml
           fi
 
-      # 6. गिटहब के इन-बिल्ट एन्ड्रोइड टूल्स को परमिशन देना
-      - name: Grant Execute Permission for Gradle
+      # 6. पहले कोर्डोवा से पूरी फाइल्स और gradlew को जबरदस्ती डाउनलोड करवाना (No such file का परमानेंट इलाज)
+      - name: Prepare Cordova Android Platform Assets
         run: |
-          cd billing-app/platforms/android
-          chmod +x gradlew
+          cd billing-app
+          cordova prepare android
 
-      # 7. फाइनल APK कंपाइल (Build) करना
+      # 7. अब जब gradlew फाइल आ चुकी है, तो उसे ABSOLUTE FULL PERMISSION देना
+      - name: Grant Absolute Permission for Generated Gradle
+        run: |
+          sudo chmod -R 777 billing-app
+          cd billing-app/platforms/android
+          sudo chmod +x gradlew
+
+      # 8. बिना किसी एरर के फाइनल APK कंपाइल (Build) करना
       - name: Build Android Production APK
         run: |
           cd billing-app
           cordova build android --release
 
-      # 8. तैयार हुआ असली APK ऐप अपलोड करना
+      # 9. तैयार हुआ असली APK ऐप डाउनलोड के लिए अपलोड करना
       - name: Upload Finished APK File
         uses: actions/upload-artifact@v4
         with:
