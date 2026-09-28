@@ -35,10 +35,6 @@
             position: relative;
         }
 
-        /* =========================
-           MOBILE / MAIN LAYOUT
-        ========================= */
-
         .main-content {
             flex: 1;
             width: 100%;
@@ -75,10 +71,6 @@
             font-weight: bold;
             cursor: pointer;
         }
-
-        /* =========================
-           SIDEBAR
-        ========================= */
 
         .sidebar-container {
             width: 260px;
@@ -142,10 +134,6 @@
             color: white;
         }
 
-        /* =========================
-           HEADERS
-        ========================= */
-
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -174,10 +162,6 @@
             font-size: 0.95rem;
         }
 
-        /* =========================
-           FORM
-        ========================= */
-
         .form-group {
             margin-bottom: 15px;
         }
@@ -196,11 +180,6 @@
             font-size: 1rem;
         }
 
-        /* =========================
-           INVOICE TABLE
-           MOBILE HORIZONTAL SCROLL
-        ========================= */
-
         .invoice-box {
             width: 100%;
             overflow-x: auto !important;
@@ -217,10 +196,6 @@
             font-size: 1rem;
         }
 
-        /* =========================
-           TOTAL + BUTTONS
-        ========================= */
-
         .total-section {
             width: 100%;
         }
@@ -233,10 +208,6 @@
         .btn-pdf {
             min-height: 60px;
         }
-
-        /* =========================
-           HISTORY
-        ========================= */
 
         .search-container {
             width: 100%;
@@ -301,10 +272,6 @@
             white-space: nowrap;
         }
 
-        /* =========================
-           VOICE
-        ========================= */
-
         .voice-btn.listening {
             animation: voicePulse 1s infinite;
         }
@@ -322,10 +289,6 @@
                 transform: scale(1);
             }
         }
-
-        /* =========================
-           MOBILE SCREEN
-        ========================= */
 
         @media (max-width: 600px) {
 
@@ -456,10 +419,6 @@
 
     <div class="swipe-handle" id="menuSwipeHandle"></div>
 
-    <!-- =========================
-         SIDEBAR
-    ========================= -->
-
     <div class="sidebar-container" id="appSidebar">
 
         <button class="close-menu-btn" onclick="toggleMobileMenu(false)">
@@ -484,34 +443,36 @@
 
         <div class="backup-panel">
 
-            <label class="nav-btn"
-                style="background:#5b21b6;color:white;display:block;cursor:pointer;text-align:center;font-size:0.9rem;font-weight:bold;padding:10px;">
-
-                📥 डेटा अपलोड करें (Load)
+            <!-- NEW FOLDER LOAD -->
+            <label
+                class="nav-btn"
+                style="background:#5b21b6;color:white;display:block;cursor:pointer;text-align:center;font-size:0.9rem;font-weight:bold;padding:10px;"
+            >
+                📥 पूरा Backup Folder Load करें
 
                 <input
                     type="file"
                     id="driveImportFile"
+                    webkitdirectory
+                    directory
+                    multiple
                     onchange="loadFromDrive()"
                     style="display:none;"
                 >
             </label>
 
+            <!-- NEW FOLDER SAVE -->
             <button
                 class="nav-btn"
                 style="background:#475569;color:white;text-align:center;width:100%;font-size:0.9rem;font-weight:bold;padding:10px;"
                 onclick="saveToDrive()"
             >
-                📤 डेटा डाउनलोड करें (Save)
+                📤 पूरा Backup Folder Save करें
             </button>
 
         </div>
     </div>
 
-
-    <!-- =========================
-         MAIN
-    ========================= -->
 
     <div class="main-content">
 
@@ -519,10 +480,6 @@
             👈 मेनू के लिए बाएँ से दाएँ (Left to Right) स्वाइप करें या यहाँ क्लिक करें
         </div>
 
-
-        <!-- =========================
-             1. NEW BILL
-        ========================= -->
 
         <div id="bill-pg" class="page active">
 
@@ -828,10 +785,6 @@
         </div>
 
 
-        <!-- =========================
-             2. VOICE
-        ========================= -->
-
         <div id="voice-pg" class="page">
 
             <h2 style="margin-bottom:10px;">
@@ -899,10 +852,6 @@
 
         </div>
 
-
-        <!-- =========================
-             3. HISTORY
-        ========================= -->
 
         <div id="hist-pg" class="page">
 
@@ -1477,8 +1426,258 @@
     }
 
 
+    /* =====================================================
+       NEW FOLDER BACKUP SYSTEM
+       ===================================================== */
+
+    let savedBackupFolderHandle = null;
+
+    const BACKUP_DB_NAME = 'billing_backup_storage';
+    const BACKUP_DB_VERSION = 1;
+    const BACKUP_DB_STORE = 'handles';
+
+
     /* =========================
-       BACKUP SAVE
+       OPEN BACKUP DATABASE
+    ========================= */
+
+    function openBackupDB() {
+
+        return new Promise((resolve, reject) => {
+
+            const request =
+                indexedDB.open(
+                    BACKUP_DB_NAME,
+                    BACKUP_DB_VERSION
+                );
+
+
+            request.onupgradeneeded =
+                function(event) {
+
+                    const db =
+                        event.target.result;
+
+                    if (
+                        !db.objectStoreNames.contains(
+                            BACKUP_DB_STORE
+                        )
+                    ) {
+
+                        db.createObjectStore(
+                            BACKUP_DB_STORE
+                        );
+
+                    }
+
+                };
+
+
+            request.onsuccess =
+                function() {
+                    resolve(request.result);
+                };
+
+
+            request.onerror =
+                function() {
+                    reject(request.error);
+                };
+
+        });
+
+    }
+
+
+    /* =========================
+       SAVE FOLDER HANDLE
+    ========================= */
+
+    async function saveBackupFolderHandle(handle) {
+
+        try {
+
+            const db =
+                await openBackupDB();
+
+            return new Promise((resolve, reject) => {
+
+                const transaction =
+                    db.transaction(
+                        BACKUP_DB_STORE,
+                        'readwrite'
+                    );
+
+                transaction.objectStore(
+                    BACKUP_DB_STORE
+                ).put(
+                    handle,
+                    'backupFolder'
+                );
+
+                transaction.oncomplete =
+                    function() {
+
+                        db.close();
+                        resolve(true);
+
+                    };
+
+                transaction.onerror =
+                    function() {
+
+                        db.close();
+                        reject(transaction.error);
+
+                    };
+
+            });
+
+        } catch (error) {
+
+            console.log(
+                'Folder handle save नहीं हुआ:',
+                error
+            );
+
+            return false;
+
+        }
+
+    }
+
+
+    /* =========================
+       GET SAVED FOLDER HANDLE
+    ========================= */
+
+    async function getSavedBackupFolderHandle() {
+
+        try {
+
+            const db =
+                await openBackupDB();
+
+            return new Promise((resolve, reject) => {
+
+                const transaction =
+                    db.transaction(
+                        BACKUP_DB_STORE,
+                        'readonly'
+                    );
+
+                const request =
+                    transaction
+                        .objectStore(
+                            BACKUP_DB_STORE
+                        )
+                        .get('backupFolder');
+
+
+                request.onsuccess =
+                    function() {
+
+                        db.close();
+
+                        resolve(
+                            request.result || null
+                        );
+
+                    };
+
+
+                request.onerror =
+                    function() {
+
+                        db.close();
+
+                        reject(
+                            request.error
+                        );
+
+                    };
+
+            });
+
+        } catch (error) {
+
+            console.log(
+                'Saved folder नहीं मिला:',
+                error
+            );
+
+            return null;
+
+        }
+
+    }
+
+
+    /* =========================
+       CHECK FOLDER PERMISSION
+    ========================= */
+
+    async function verifyFolderPermission(handle) {
+
+        if (!handle) {
+            return false;
+        }
+
+
+        try {
+
+            if (
+                handle.queryPermission
+            ) {
+
+                let permission =
+                    await handle.queryPermission({
+                        mode: 'readwrite'
+                    });
+
+
+                if (
+                    permission === 'granted'
+                ) {
+                    return true;
+                }
+
+            }
+
+
+            if (
+                handle.requestPermission
+            ) {
+
+                let permission =
+                    await handle.requestPermission({
+                        mode: 'readwrite'
+                    });
+
+
+                return permission === 'granted';
+
+            }
+
+
+            return true;
+
+        } catch (error) {
+
+            console.log(
+                'Permission check error:',
+                error
+            );
+
+            return false;
+
+        }
+
+    }
+
+
+    /* =========================
+       SAVE ALL BILLS TO FOLDER
     ========================= */
 
     async function saveToDrive() {
@@ -1499,116 +1698,600 @@
         }
 
 
-        let todayDate =
-            new Date()
-                .toLocaleDateString('hi-IN')
-                .replace(/\//g, '-');
+        let bills;
 
 
-        let defaultName =
-            `billing_data_backup_${todayDate}.json`;
+        try {
+
+            bills =
+                JSON.parse(currentData);
+
+        } catch (error) {
+
+            return alert(
+                'बिल डेटा पढ़ने में समस्या आई!'
+            );
+
+        }
 
 
-        let dataStr =
-            "data:text/json;charset=utf-8," +
-            encodeURIComponent(currentData);
+        if (
+            !Array.isArray(bills) ||
+            bills.length === 0
+        ) {
+
+            return alert(
+                'कोई बिल हिस्ट्री मौजूद नहीं है!'
+            );
+
+        }
 
 
-        let dl =
-            document.createElement('a');
+        /* Browser support check */
+
+        if (
+            !window.showDirectoryPicker
+        ) {
+
+            return alert(
+                'इस ऐप के इस Android/WebView में सीधे Folder में Save करने की सुविधा उपलब्ध नहीं है।\n\nकृपया Chrome/ऐसे browser में खोलें जो Folder Access support करता हो।'
+            );
+
+        }
 
 
-        dl.setAttribute(
-            "href",
-            dataStr
+        try {
+
+            /* पहले से चुना हुआ folder */
+
+            if (
+                !savedBackupFolderHandle
+            ) {
+
+                savedBackupFolderHandle =
+                    await getSavedBackupFolderHandle();
+
+            }
+
+
+            /* Permission check */
+
+            let permissionOK =
+                await verifyFolderPermission(
+                    savedBackupFolderHandle
+                );
+
+
+            /* अगर पुराना folder उपलब्ध नहीं है */
+
+            if (!permissionOK) {
+
+                savedBackupFolderHandle =
+                    await window.showDirectoryPicker({
+                        mode: 'readwrite'
+                    });
+
+
+                permissionOK =
+                    await verifyFolderPermission(
+                        savedBackupFolderHandle
+                    );
+
+
+                if (!permissionOK) {
+
+                    savedBackupFolderHandle =
+                        null;
+
+                    return alert(
+                        'Storage folder की permission नहीं मिली।'
+                    );
+
+                }
+
+
+                await saveBackupFolderHandle(
+                    savedBackupFolderHandle
+                );
+
+            }
+
+
+            /* Folder के अंदर हर bill की अलग JSON file */
+
+            let savedCount = 0;
+
+
+            for (
+                const bill of bills
+            ) {
+
+                if (
+                    !bill ||
+                    !bill.id
+                ) {
+                    continue;
+                }
+
+
+                const fileName =
+                    'bill_' +
+                    String(bill.id) +
+                    '.json';
+
+
+                const fileHandle =
+                    await savedBackupFolderHandle
+                        .getFileHandle(
+                            fileName,
+                            {
+                                create: true
+                            }
+                        );
+
+
+                const writable =
+                    await fileHandle.createWritable();
+
+
+                await writable.write(
+                    JSON.stringify(
+                        bill,
+                        null,
+                        2
+                    )
+                );
+
+
+                await writable.close();
+
+                savedCount++;
+
+            }
+
+
+            const folderName =
+                savedBackupFolderHandle.name ||
+                'Selected Backup Folder';
+
+
+            alert(
+                '✅ Your files were saved to your storage\n\n' +
+                '📁 Folder: ' +
+                folderName +
+                '\n\n' +
+                '💾 Saved bills: ' +
+                savedCount +
+                '\n\n' +
+                'अब इस folder में आपके सभी bills की backup files हैं।'
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                'Folder save error:',
+                error
+            );
+
+
+            if (
+                error &&
+                error.name === 'AbortError'
+            ) {
+
+                return;
+
+            }
+
+
+            savedBackupFolderHandle =
+                null;
+
+
+            alert(
+                '❌ Backup save नहीं हो पाया।\n\n' +
+                'कृपया दोबारा Save दबाकर backup folder चुनें।'
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       LOAD ALL JSON FILES FROM SELECTED FOLDER
+       ===================================================== */
+
+    async function loadFromDrive() {
+
+        const input =
+            document.getElementById(
+                'driveImportFile'
+            );
+
+
+        const files =
+            Array.from(
+                input.files || []
+            );
+
+
+        if (
+            files.length === 0
+        ) {
+
+            return;
+
+        }
+
+
+        let allImportedBills = [];
+
+        let jsonFileCount = 0;
+
+        let failedFileCount = 0;
+
+
+        /* हर JSON file पढ़ना */
+
+        for (
+            const file of files
+        ) {
+
+            if (
+                !file.name
+                    .toLowerCase()
+                    .endsWith('.json')
+            ) {
+
+                continue;
+
+            }
+
+
+            jsonFileCount++;
+
+
+            try {
+
+                const text =
+                    await readBackupFile(
+                        file
+                    );
+
+
+                const imported =
+                    JSON.parse(text);
+
+
+                /*
+                   दो तरह के backup स्वीकार होंगे:
+
+                   1. एक bill object
+                   2. bills की array
+                */
+
+                if (
+                    Array.isArray(imported)
+                ) {
+
+                    imported.forEach(
+                        bill => {
+
+                            if (
+                                bill &&
+                                typeof bill === 'object'
+                            ) {
+
+                                allImportedBills.push(
+                                    bill
+                                );
+
+                            }
+
+                        }
+                    );
+
+                } else if (
+                    imported &&
+                    typeof imported === 'object'
+                ) {
+
+                    allImportedBills.push(
+                        imported
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.log(
+                    'Backup file error:',
+                    file.name,
+                    error
+                );
+
+                failedFileCount++;
+
+            }
+
+        }
+
+
+        /* कोई valid bill नहीं मिला */
+
+        if (
+            allImportedBills.length === 0
+        ) {
+
+            input.value = '';
+
+            return alert(
+                '❌ इस folder में कोई सही billing JSON backup नहीं मिली।'
+            );
+
+        }
+
+
+        /* Existing History */
+
+        let existingBills = [];
+
+
+        try {
+
+            existingBills =
+                JSON.parse(
+                    localStorage.getItem(
+                        'my_bills'
+                    )
+                ) || [];
+
+        } catch (error) {
+
+            existingBills = [];
+
+        }
+
+
+        if (
+            !Array.isArray(existingBills)
+        ) {
+
+            existingBills = [];
+
+        }
+
+
+        /*
+           Duplicate पहचान:
+
+           सबसे पहले bill.id से।
+           अगर id नहीं है तो customer/date/items/total
+           से पहचानने की कोशिश होगी।
+        */
+
+        const existingKeys =
+            new Set();
+
+
+        existingBills.forEach(
+            bill => {
+
+                existingKeys.add(
+                    getBillUniqueKey(bill)
+                );
+
+            }
         );
 
 
-        dl.setAttribute(
-            "download",
-            defaultName
+        let newBills = [];
+
+        let duplicateCount = 0;
+
+
+        allImportedBills.forEach(
+            bill => {
+
+                if (
+                    !bill ||
+                    typeof bill !== 'object'
+                ) {
+
+                    return;
+
+                }
+
+
+                const key =
+                    getBillUniqueKey(
+                        bill
+                    );
+
+
+                if (
+                    existingKeys.has(key)
+                ) {
+
+                    duplicateCount++;
+
+                    return;
+
+                }
+
+
+                existingKeys.add(key);
+
+                newBills.push(
+                    bill
+                );
+
+            }
         );
 
 
-        dl.click();
+        /*
+           पुराने History + नए bills
+        */
+
+        const finalBills =
+            existingBills.concat(
+                newBills
+            );
+
+
+        localStorage.setItem(
+            'my_bills',
+            JSON.stringify(
+                finalBills
+            )
+        );
+
+
+        input.value = '';
+
+
+        /*
+           History refresh
+        */
+
+        if (
+            typeof showHistory ===
+            "function"
+        ) {
+
+            showHistory();
+
+        }
+
+
+        alert(
+            '✅ Backup folder successfully loaded!\n\n' +
+            '📁 JSON files मिलीं: ' +
+            jsonFileCount +
+            '\n' +
+            '📦 नए bills restore हुए: ' +
+            newBills.length +
+            '\n' +
+            '♻️ Duplicate bills छोड़े गए: ' +
+            duplicateCount +
+            '\n' +
+            '❌ पढ़ी नहीं गई files: ' +
+            failedFileCount +
+            '\n\n' +
+            'अब सभी bills आपकी History में हैं।'
+        );
 
     }
 
 
     /* =========================
-       BACKUP LOAD
+       READ ONE BACKUP FILE
     ========================= */
 
-    function loadFromDrive() {
+    function readBackupFile(file) {
 
-        let fileInput =
-            document.getElementById(
-                'driveImportFile'
-            ).files;
+        return new Promise(
+            (resolve, reject) => {
 
-
-        if (!fileInput.length) {
-            return;
-        }
+                const reader =
+                    new FileReader();
 
 
-        let fileReader =
-            new FileReader();
+                reader.onload =
+                    function(event) {
 
-
-        fileReader.onload =
-            function(event) {
-
-                try {
-
-                    let imported =
-                        JSON.parse(
+                        resolve(
                             event.target.result
                         );
 
+                    };
 
-                    if (
-                        Array.isArray(imported)
-                    ) {
 
-                        localStorage.setItem(
-                            'my_bills',
-                            JSON.stringify(imported)
+                reader.onerror =
+                    function() {
+
+                        reject(
+                            reader.error
                         );
 
-
-                        alert(
-                            'डेटा रिस्टोर हो गया है!'
-                        );
+                    };
 
 
-                        if (
-                            typeof showHistory === "function"
-                        ) {
-                            showHistory();
-                        }
+                reader.readAsText(
+                    file
+                );
 
-                    } else {
+            }
+        );
 
-                        alert(
-                            'ग़लत फ़ाइल!'
-                        );
-
-                    }
-
-                } catch(err) {
-
-                    alert(
-                        'एरर आया!'
-                    );
-
-                }
-
-            };
+    }
 
 
-        fileReader.readAsText(
-            fileInput[0]
+    /* =========================
+       UNIQUE BILL KEY
+    ========================= */
+
+    function getBillUniqueKey(bill) {
+
+        if (
+            bill &&
+            bill.id !== undefined &&
+            bill.id !== null
+        ) {
+
+            return 'id:' +
+                String(
+                    bill.id
+                );
+
+        }
+
+
+        let items =
+            Array.isArray(
+                bill && bill.items
+            )
+                ? bill.items
+                : [];
+
+
+        let itemPart =
+            items
+                .map(
+                    item =>
+                        String(
+                            item.name || ''
+                        ) +
+                        '|' +
+                        String(
+                            item.qty || ''
+                        ) +
+                        '|' +
+                        String(
+                            item.price || ''
+                        )
+                )
+                .join('||');
+
+
+        return (
+            'bill:' +
+            String(
+                bill && bill.customer || ''
+            ) +
+            '|' +
+            String(
+                bill && bill.date || ''
+            ) +
+            '|' +
+            itemPart +
+            '|' +
+            String(
+                bill && bill.total || ''
+            )
         );
 
     }
@@ -1689,8 +2372,6 @@
 
         }
 
-
-        /* ITEM SEARCH REPORT */
 
         if (
             sI !== '' &&
@@ -1801,8 +2482,6 @@
 
         }
 
-
-        /* CUSTOMER + DATE GROUPING */
 
         let groups = {};
 
@@ -1919,138 +2598,177 @@
 
     }
 
-/* =========================
-   MOBILE KEYBOARD NEXT ORDER
-========================= */
 
-function setupMobileNext() {
+    /* =========================
+       MOBILE KEYBOARD NEXT ORDER
+    ========================= */
 
-    const customer = document.getElementById('custName');
+    function setupMobileNext() {
 
-    const itemNames = Array.from(
-        document.querySelectorAll('.i-name')
-    );
+        const customer =
+            document.getElementById(
+                'custName'
+            );
 
-    const itemQtys = Array.from(
-        document.querySelectorAll('.i-qty')
-    );
+        const itemNames =
+            Array.from(
+                document.querySelectorAll(
+                    '.i-name'
+                )
+            );
 
-    const itemPrices = Array.from(
-        document.querySelectorAll('.i-price')
-    );
+        const itemQtys =
+            Array.from(
+                document.querySelectorAll(
+                    '.i-qty'
+                )
+            );
 
-
-    /* Customer → Item 1 */
-
-    if (customer) {
-
-        customer.setAttribute('enterkeyhint', 'next');
-
-        customer.addEventListener('keydown', function(e) {
-
-            if (e.key === 'Enter') {
-
-                e.preventDefault();
-
-                if (itemNames[0]) {
-                    itemNames[0].focus();
-                }
-
-            }
-
-        });
-
-    }
+        const itemPrices =
+            Array.from(
+                document.querySelectorAll(
+                    '.i-price'
+                )
+            );
 
 
-    /* Item → Quantity → Price → Next Item */
+        if (customer) {
 
-    for (let i = 0; i < itemNames.length; i++) {
+            customer.setAttribute(
+                'enterkeyhint',
+                'next'
+            );
 
-        itemNames[i].setAttribute('enterkeyhint', 'next');
-        itemQtys[i].setAttribute('enterkeyhint', 'next');
+            customer.addEventListener(
+                'keydown',
+                function(e) {
 
-        itemPrices[i].setAttribute(
-            'enterkeyhint',
-            i < itemNames.length - 1
-                ? 'next'
-                : 'done'
-        );
+                    if (
+                        e.key === 'Enter'
+                    ) {
 
+                        e.preventDefault();
 
-        /* Item → Quantity */
+                        if (
+                            itemNames[0]
+                        ) {
 
-        itemNames[i].addEventListener(
-            'keydown',
-            function(e) {
+                            itemNames[0]
+                                .focus();
 
-                if (e.key === 'Enter') {
-
-                    e.preventDefault();
-
-                    itemQtys[i].focus();
-
-                }
-
-            }
-        );
-
-
-        /* Quantity → Price */
-
-        itemQtys[i].addEventListener(
-            'keydown',
-            function(e) {
-
-                if (e.key === 'Enter') {
-
-                    e.preventDefault();
-
-                    itemPrices[i].focus();
-
-                }
-
-            }
-        );
-
-
-        /* Price → Next Item */
-
-        itemPrices[i].addEventListener(
-            'keydown',
-            function(e) {
-
-                if (e.key === 'Enter') {
-
-                    e.preventDefault();
-
-                    if (itemNames[i + 1]) {
-
-                        itemNames[i + 1].focus();
-
-                    } else {
-
-                        itemPrices[i].blur();
+                        }
 
                     }
 
                 }
+            );
 
-            }
-        );
+        }
+
+
+        for (
+            let i = 0;
+            i < itemNames.length;
+            i++
+        ) {
+
+            itemNames[i].setAttribute(
+                'enterkeyhint',
+                'next'
+            );
+
+            itemQtys[i].setAttribute(
+                'enterkeyhint',
+                'next'
+            );
+
+            itemPrices[i].setAttribute(
+                'enterkeyhint',
+                i <
+                itemNames.length - 1
+                    ? 'next'
+                    : 'done'
+            );
+
+
+            itemNames[i].addEventListener(
+                'keydown',
+                function(e) {
+
+                    if (
+                        e.key === 'Enter'
+                    ) {
+
+                        e.preventDefault();
+
+                        itemQtys[i]
+                            .focus();
+
+                    }
+
+                }
+            );
+
+
+            itemQtys[i].addEventListener(
+                'keydown',
+                function(e) {
+
+                    if (
+                        e.key === 'Enter'
+                    ) {
+
+                        e.preventDefault();
+
+                        itemPrices[i]
+                            .focus();
+
+                    }
+
+                }
+            );
+
+
+            itemPrices[i].addEventListener(
+                'keydown',
+                function(e) {
+
+                    if (
+                        e.key === 'Enter'
+                    ) {
+
+                        e.preventDefault();
+
+                        if (
+                            itemNames[i + 1]
+                        ) {
+
+                            itemNames[i + 1]
+                                .focus();
+
+                        } else {
+
+                            itemPrices[i]
+                                .blur();
+
+                        }
+
+                    }
+
+                }
+            );
+
+        }
 
     }
 
-}
 
-
-/* Page load होने के बाद Next system तैयार करें */
-
-document.addEventListener(
-    'DOMContentLoaded',
-    setupMobileNext
-);
+    document.addEventListener(
+        'DOMContentLoaded',
+        setupMobileNext
+    );
 
 </script>
+
 </body>
 </html>
