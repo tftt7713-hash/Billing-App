@@ -52,6 +52,48 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.speech.RecognitionService" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
+      - name: Add print bridge
+        run: |
+          APPDIR=android/app/src/main/java/com/tftt7713/hash/app
+          mkdir -p $APPDIR
+          rm -f $APPDIR/MainActivity.java $APPDIR/MainActivity.kt
+          cat > $APPDIR/MainActivity.java <<'EOF'
+          package com.tftt7713.hash.app;
+
+          import android.content.Context;
+          import android.os.Bundle;
+          import android.print.PrintAttributes;
+          import android.print.PrintManager;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebView;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              public class PrintBridge {
+                  @JavascriptInterface
+                  public void print(final String title) {
+                      runOnUiThread(new Runnable() {
+                          public void run() {
+                              WebView wv = getBridge().getWebView();
+                              PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+                              String name = (title == null || title.isEmpty()) ? "Invoice" : title;
+                              pm.print(name, wv.createPrintDocumentAdapter(name),
+                                  new PrintAttributes.Builder()
+                                      .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                      .build());
+                          }
+                      });
+                  }
+              }
+
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getBridge().getWebView().addJavascriptInterface(new PrintBridge(), "AndroidPrint");
+              }
+          }
+          EOF
+
       - name: Sync Capacitor Android
         run: npx cap sync android
 
