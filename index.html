@@ -366,7 +366,7 @@ return true
 }catch(e){return false}
 }
 
-async function saveToDrive(){
+async function saveToDriveWeb(){
 const raw=localStorage.getItem("my_bills");
 
 if(!raw||raw==="[]"){
@@ -805,6 +805,42 @@ const ps=document.createElement("style");
 ps.textContent="@page{size:A4;margin:8mm}@media print{html,body{display:block!important;min-height:0!important;overflow:visible!important}}";
 document.head.appendChild(ps);
 })();
+
+/* ===== ANDROID APP BACKUP (फोन का फोल्डर चुनने वाला स्क्रीन) ===== */
+window.onBackupFolderPicked=function(ok){
+if(ok&&window._pendingBackup){window._pendingBackup=false;saveToDrive()}
+else{window._pendingBackup=false}
+};
+
+async function saveToDrive(){
+const B=window.AndroidBackup;
+if(!B||!B.saveBills){return saveToDriveWeb()}
+
+let bills=[];
+try{bills=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){bills=[]}
+if(!Array.isArray(bills)||!bills.length){
+alert("कोई बिल History मौजूद नहीं है!");
+return
+}
+
+if(!B.hasFolder()){
+window._pendingBackup=true;
+B.pickFolder();
+return
+}
+
+const r=String(B.saveBills(JSON.stringify(bills)));
+
+if(r.indexOf("OK|")===0){
+const p=r.split("|");
+alert("✅ Backup successfully saved!\n\n📁 Folder: "+p[2]+"\n\n💾 Bills saved: "+p[1]);
+return
+}
+
+alert("❌ Folder में backup save नहीं हो पाया।\n\nदोबारा folder चुनें।");
+window._pendingBackup=true;
+B.pickFolder()
+}
 </script>
 </body>
   </html>
