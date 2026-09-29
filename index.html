@@ -179,7 +179,7 @@ function escapeHtml(value){return String(value).replace(/&/g,"&amp;").replace(/<
 /* ========================= VOICE ========================= */
 let recognition=null;
 
-async function startVoiceRecognition(){
+async function startWebVoiceRecognition(){
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(!SpeechRecognition){
 alert("आपके browser में Voice Recognition उपलब्ध नहीं है।");
@@ -615,6 +615,184 @@ const dd=String(today.getDate()).padStart(2,"0");
 document.getElementById("billDate").value=`${yyyy}-${mm}-${dd}`;
 setupMobileNext()
 });
+
+/* ===== PDF PREVIEW ===== */
+const ROUND_TO=10;
+
+function numToWords(n){
+const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+const b=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+const two=x=>x<20?a[x]:b[Math.floor(x/10)]+(x%10?" "+a[x%10]:"");
+if(n===0)return "Zero";
+let s="";
+const cr=Math.floor(n/1e7);n%=1e7;
+const lk=Math.floor(n/1e5);n%=1e5;
+const th=Math.floor(n/1e3);n%=1e3;
+const h=Math.floor(n/100);n%=100;
+if(cr)s+=two(cr)+" Crore ";
+if(lk)s+=two(lk)+" Lakh ";
+if(th)s+=two(th)+" Thousand ";
+if(h)s+=a[h]+" Hundred ";
+if(n)s+=two(n);
+return s.trim();
+}
+
+function openInvoicePreview(){
+const cust=escapeHtml(document.getElementById("custName").value.trim()||"");
+const raw=document.getElementById("billDate").value;
+const date=raw?new Date(raw+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"}).replace(/ /g,"-"):"";
+const items=[];
+document.querySelectorAll(".table-row").forEach(r=>{
+const n=r.querySelector(".i-name").value.trim();
+const q=r.querySelector(".i-qty").value.trim();
+const p=parseFloat(r.querySelector(".i-price").value);
+if(n&&!isNaN(p))items.push({n,q,p});
+});
+if(!items.length){alert("कृपया कम से कम 1 आइटम भरें!");return}
+
+const sub=items.reduce((s,i)=>s+i.p,0);
+const cg=Math.round(sub*0.025),sg=Math.round(sub*0.025);
+const total=Math.round(sub)+cg+sg;
+const rounded=Math.round(total/ROUND_TO)*ROUND_TO;
+const words=numToWords(rounded)+" Only";
+
+const bd="border:1px solid #000;";
+const rows=items.map((i,k)=>`<tr>
+<td style="border-left:1px solid #000;border-right:1px solid #000;padding:6px;vertical-align:top">${k+1}.</td>
+<td style="border-right:1px solid #000;padding:6px;vertical-align:top">${escapeHtml(i.n)}</td>
+<td style="border-right:1px solid #000;padding:6px"></td>
+<td style="border-right:1px solid #000;padding:6px"></td>
+<td style="border-right:1px solid #000;padding:6px;text-align:right;vertical-align:top">${escapeHtml(i.q)}</td>
+<td style="border-right:1px solid #000;padding:6px;text-align:right"></td>
+<td style="border-right:1px solid #000;padding:6px;text-align:right;font-weight:bold;vertical-align:top">${Math.round(i.p)}</td>
+</tr>`).join("");
+
+let box=document.getElementById("invoicePreview");
+if(box)box.remove();
+box=document.createElement("div");
+box.id="invoicePreview";
+box.style.cssText="position:fixed;inset:0;background:#fff;z-index:99999;overflow:auto;padding:10px";
+box.innerHTML=`
+<style>
+#invoicePreview [contenteditable]{outline:none}
+#invoicePreview [contenteditable]:focus{background:#fef9c3}
+@media print{body>*:not(#invoicePreview){display:none!important}.no-print{display:none!important}#invoicePreview{position:static!important;padding:0!important}}
+</style>
+<div class="no-print" style="display:flex;gap:10px;margin-bottom:6px">
+<button onclick="document.getElementById('invoicePreview').remove()" style="flex:1;padding:12px;background:#475569;color:#fff;border:0;border-radius:6px;font-weight:bold">⬅ वापस</button>
+<button onclick="window.print()" style="flex:1;padding:12px;background:#dc2626;color:#fff;border:0;border-radius:6px;font-weight:bold">🖨 Print / PDF</button>
+</div>
+<div class="no-print" style="font-size:12px;color:#64748b;margin-bottom:8px">✏️ किसी भी टेक्स्ट पर टैप करके बदल सकते हैं।</div>
+
+<div style="overflow-x:auto"><div contenteditable="true" style="min-width:720px;max-width:800px;margin:auto;color:#000;font-size:13px;font-family:Arial,sans-serif">
+
+<div style="text-align:center;padding-bottom:8px"><div style="font-size:22px;font-weight:bold">TAX INVOICE</div><div style="font-size:15px;font-weight:bold">Cash/Credit Memo</div></div>
+
+<div style="display:flex;${bd}">
+<div style="flex:1.1;border-right:1px solid #000">
+<div style="padding:6px;border-bottom:1px solid #000;min-height:120px;line-height:1.5">
+<div style="font-size:11px">SELLER</div>
+<b>Kalpvruksha Jadibuty Bhandaar</b><br>
+D-102 Divyajivan Residency NR.Uma Vidyalay,Nikol Naroda Road,Nikol,Ahmedabad-382350 &nbsp; State: Gujarat Code:24<br>
+GSTIN/UIN: 24AOBPS5022D1ZF &nbsp; Mo. 9879582176<br>
+PAN: AOBPS5022D &nbsp; MSME NO.: UDYAM-GJ-01-0330051
+</div>
+<div style="padding:6px;border-bottom:1px solid #000;min-height:80px"><b style="font-size:11px">Consignee</b><br>${cust}</div>
+<div style="padding:6px;min-height:80px"><b style="font-size:11px">BUYER</b><br>${cust}</div>
+</div>
+<div style="flex:1">
+<div style="display:flex;border-bottom:1px solid #000;padding:6px;min-height:50px"><div style="flex:1">Invoice No.<br><b>&nbsp;</b></div><div style="flex:1">Dated<br><b>${date}</b></div></div>
+<div style="display:flex;border-bottom:1px solid #000;padding:6px;min-height:50px"><div style="flex:1">Delivery Note</div><div style="flex:1">Mode/Terms of payment</div></div>
+<div style="display:flex;border-bottom:1px solid #000;padding:6px;min-height:50px"><div style="flex:1">Reference No. &amp; Date</div><div style="flex:1">Dated</div></div>
+<div style="display:flex;border-bottom:1px solid #000;padding:6px;min-height:50px"><div style="flex:1">Buyer's Order No.</div><div style="flex:1">Delivery Note Date</div></div>
+<div style="display:flex;border-bottom:1px solid #000;padding:6px;min-height:50px"><div style="flex:1">Dispatched of through</div><div style="flex:1">Destination</div></div>
+<div style="display:flex;padding:6px;min-height:50px"><div style="flex:1">Bill of Lading/LR-RR No.<br><b>Dt. ${date}</b></div><div style="flex:1">Motor Vehicle No.</div></div>
+</div>
+</div>
+
+<table style="width:100%;border-collapse:collapse;${bd}border-top:0">
+<tr style="font-weight:bold;border-bottom:1px solid #000">
+<td style="padding:8px;width:35px">No.</td><td style="padding:8px">Description of goods</td><td style="padding:8px">HSN/SAC</td><td style="padding:8px">GST</td><td style="padding:8px;text-align:right">Quantity</td><td style="padding:8px;text-align:right">Rate</td><td style="padding:8px;text-align:right">Amount</td>
+</tr>
+${rows}
+<tr>
+<td style="border-left:1px solid #000;border-right:1px solid #000;height:22px"></td>
+<td style="border-right:1px solid #000;text-align:right;padding:6px"><b>SGST</b></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000;padding:6px">2.5%</td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000;text-align:right;padding:6px;font-weight:bold">${sg}</td>
+</tr>
+<tr>
+<td style="border-left:1px solid #000;border-right:1px solid #000"></td>
+<td style="border-right:1px solid #000;text-align:right;padding:6px"><b>CGST</b></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000;padding:6px">2.5%</td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000;text-align:right;padding:6px;font-weight:bold">${cg}</td>
+</tr>
+<tr>
+<td style="border-left:1px solid #000;border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td>
+<td style="border-right:1px solid #000;text-align:right;padding:6px;font-weight:bold">total<br>(Round of)</td><td style="border-right:1px solid #000"></td>
+<td style="border-right:1px solid #000;text-align:right;padding:6px;font-weight:bold;border-top:1px solid #000">${total}<br>${rounded}</td>
+</tr>
+<tr><td style="border-left:1px solid #000;border-right:1px solid #000;height:120px"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td><td style="border-right:1px solid #000"></td></tr>
+</table>
+
+<div style="${bd}border-top:0;padding:8px">Amount Chargeable (In Words) :- <b>${words}</b></div>
+
+<div style="display:flex;${bd}border-top:0;padding:8px;gap:10px;align-items:flex-end">
+<div style="flex:1;font-size:12px;line-height:1.6">GSTIN/UIN: 24AOBPS5022D1ZF<br>PAN: AOBPS5022D<br>MSME NO.: UDYAM-GJ-01-0330051<br>G-pay Mo. 9879582176</div>
+<div style="width:110px;height:110px;border:1px dashed #94a3b8;display:flex;align-items:center;justify-content:center;color:#94a3b8">QR</div>
+<div style="flex:1.2;line-height:1.6">Company's Bank Details<br><b>KALPVRUKSHA JADIBUTY BHANDAAR</b><br>IFSC : <b>KKBK0002603</b><br>Bank Name : <b>KOTAK MAHENDRA</b><br>Ac. : <b>9879522108</b><br>Branch : <b>Nikol Ahmedabad</b></div>
+</div>
+
+<div style="display:flex;justify-content:space-between;${bd}border-top:0;padding:8px;min-height:90px">
+<div>Customer's Seal and Signature</div>
+<div style="text-align:right;display:flex;flex-direction:column;justify-content:space-between"><b>for Kalpvruksha Jadibuty Bhandaar</b><span>Authorized Signatory</span></div>
+</div>
+<div style="text-align:center;font-size:10px;font-weight:bold;margin-top:4px">Jurisdiction In Ahemedabad</div>
+
+</div></div>`;
+document.body.appendChild(box);
+}
+document.getElementById("pdfPreviewBtn").addEventListener("click",openInvoicePreview);
+
+/* ===== ANDROID APP VOICE (Capacitor plugin) ===== */
+async function startVoiceRecognition(){
+const status=document.getElementById("voiceStatus");
+const btn=document.getElementById("startVoiceBtn");
+const isNative=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform();
+const SR=isNative&&Capacitor.Plugins?Capacitor.Plugins.SpeechRecognition:null;
+
+if(!SR){return startWebVoiceRecognition()}
+
+if(btn.classList.contains("listening")){
+try{await SR.stop()}catch(e){}
+btn.classList.remove("listening");
+status.innerText="माइक बंद है।";
+return
+}
+
+try{
+const av=await SR.available();
+if(!av||!av.available){
+status.innerText="इस फोन में Speech Recognition उपलब्ध नहीं है। Google app / Speech Services चालू करें।";
+return
+}
+
+let perm=await SR.checkPermissions();
+if(perm.speechRecognition!=="granted")perm=await SR.requestPermissions();
+if(perm.speechRecognition!=="granted"){
+status.innerText="🎤 माइक की अनुमति नहीं मिली। फोन की App Settings में Microphone अनुमति चालू करें।";
+return
+}
+
+btn.classList.add("listening");
+status.innerText="सुन रहा हूँ... बोलिए भाई!";
+
+const res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:false});
+
+btn.classList.remove("listening");
+if(res&&res.matches&&res.matches.length)parseVoiceText(String(res.matches[0]).toLowerCase());
+else status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
+}catch(e){
+btn.classList.remove("listening");
+status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
+}
+}
 </script>
 </body>
 </html>
