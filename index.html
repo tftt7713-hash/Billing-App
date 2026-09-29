@@ -793,6 +793,18 @@ btn.classList.remove("listening");
 status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
 }
 }
+
+/* ===== PRINT: ऐप में फोन का प्रिंट स्क्रीन, PC में Chrome का ===== */
+(function(){
+const origPrint=window.print.bind(window);
+window.print=function(){
+if(window.AndroidPrint&&window.AndroidPrint.print){window.AndroidPrint.print("Invoice")}
+else{origPrint()}
+};
+const ps=document.createElement("style");
+ps.textContent="@page{size:A4;margin:8mm}@media print{html,body{display:block!important;min-height:0!important;overflow:visible!important}}";
+document.head.appendChild(ps);
+})();
 </script>
 </body>
-</html>
+  </html>
