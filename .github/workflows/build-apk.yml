@@ -52,7 +52,7 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.speech.RecognitionService" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      - name: Add print bridge
+      - name: Add print and backup bridge
         run: |
           APPDIR=android/app/src/main/java/com/tftt7713/hash/app
           mkdir -p $APPDIR
@@ -61,14 +61,35 @@ jobs:
           package com.tftt7713.hash.app;
 
           import android.content.Context;
+          import android.content.Intent;
+          import android.content.UriPermission;
+          import android.database.Cursor;
+          import android.net.Uri;
           import android.os.Bundle;
           import android.print.PrintAttributes;
           import android.print.PrintManager;
+          import android.provider.DocumentsContract;
           import android.webkit.JavascriptInterface;
           import android.webkit.WebView;
           import com.getcapacitor.BridgeActivity;
+          import java.io.OutputStream;
+          import java.util.HashMap;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
 
           public class MainActivity extends BridgeActivity {
+              private static final int REQ_PICK_FOLDER = 4711;
+              private static final String PREFS = "backup_prefs";
+              private static final String KEY_TREE = "tree_uri";
+
+              private void js(final String code) {
+                  runOnUiThread(new Runnable() {
+                      public void run() {
+                          getBridge().getWebView().evaluateJavascript(code, null);
+                      }
+                  });
+              }
+
               public class PrintBridge {
                   @JavascriptInterface
                   public void print(final String title) {
@@ -86,10 +107,103 @@ jobs:
                   }
               }
 
+              public class BackupBridge {
+                  @JavascriptInterface
+                  public void pickFolder() {
+                      runOnUiThread(new Runnable() {
+                          public void run() {
+                              Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                              i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                  | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                  | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                  | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+                              MainActivity.this.startActivityForResult(i, REQ_PICK_FOLDER);
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public boolean hasFolder() {
+                      String s = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_TREE, null);
+                      if (s == null) return false;
+                      for (UriPermission p : getContentResolver().getPersistedUriPermissions()) {
+                          if (p.getUri().toString().equals(s) && p.isWritePermission()) return true;
+                      }
+                      return false;
+                  }
+
+                  @JavascriptInterface
+                  public String saveBills(String json) {
+                      try {
+                          String s = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_TREE, null);
+                          if (s == null) return "NOFOLDER";
+                          Uri tree = Uri.parse(s);
+                          String treeDocId = DocumentsContract.getTreeDocumentId(tree);
+                          Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, treeDocId);
+                          Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, treeDocId);
+
+                          HashMap<String, Uri> existing = new HashMap<String, Uri>();
+                          Cursor c = getContentResolver().query(children, new String[]{
+                              DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                              DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null);
+                          if (c != null) {
+                              while (c.moveToNext()) {
+                                  existing.put(c.getString(1),
+                                      DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0)));
+                              }
+                              c.close();
+                          }
+
+                          JSONArray arr = new JSONArray(json);
+                          int count = 0;
+                          for (int i = 0; i < arr.length(); i++) {
+                              JSONObject bill = arr.optJSONObject(i);
+                              if (bill == null) continue;
+                              String id = bill.has("id") ? bill.get("id").toString() : (System.currentTimeMillis() + "_" + i);
+                              String name = "bill_" + id + ".json";
+                              Uri target = existing.get(name);
+                              if (target == null) {
+                                  target = DocumentsContract.createDocument(getContentResolver(), parent, "application/json", name);
+                              }
+                              if (target == null) continue;
+                              OutputStream os = getContentResolver().openOutputStream(target, "wt");
+                              if (os == null) continue;
+                              os.write(bill.toString(2).getBytes("UTF-8"));
+                              os.close();
+                              count++;
+                          }
+                          String folder = tree.getLastPathSegment();
+                          if (folder == null) folder = "Selected folder";
+                          return "OK|" + count + "|" + folder;
+                      } catch (Exception e) {
+                          return "ERROR|" + e.getMessage();
+                      }
+                  }
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == REQ_PICK_FOLDER) {
+                      if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                          Uri tree = data.getData();
+                          try {
+                              getContentResolver().takePersistableUriPermission(tree,
+                                  Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                          } catch (Exception e) {}
+                          getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_TREE, tree.toString()).apply();
+                          js("window.onBackupFolderPicked&&window.onBackupFolderPicked(true)");
+                      } else {
+                          js("window.onBackupFolderPicked&&window.onBackupFolderPicked(false)");
+                      }
+                  }
+              }
+
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   getBridge().getWebView().addJavascriptInterface(new PrintBridge(), "AndroidPrint");
+                  getBridge().getWebView().addJavascriptInterface(new BackupBridge(), "AndroidBackup");
               }
           }
           EOF
