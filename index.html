@@ -1,1673 +1,620 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
+<script src="cordova.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>स्मार्ट बिलिंग और इनवॉइस हिस्ट्री टूल</title>
 
 <style>
-:root{
- --p-color:#2563eb;
- --s-color:#16a34a;
- --bg:#f8fafc;
- --bd:#94a3b8;
-}
+:root{--p-color:#2563eb;--s-color:#16a34a;--bg:#f8fafc;--bd:#94a3b8}
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
-html,body{width:100%;min-
-
-height:100%;overflow-x:hidden}
+html,body{width:100%;min-height:100%;overflow-x:hidden}
 body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 .main-content{flex:1;width:100%;padding:15px;min-width:0}
-.page{
- display:none;width:100%;max-width:850px;margin:auto;background:white;
- padding:15px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.05);
- overflow:hidden
-}
+.page{display:none;width:100%;max-width:850px;margin:auto;background:white;padding:15px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.05);overflow:hidden}
 .page.active{display:block}
-.swipe-hint{
- width:100%;background:#eff6ff;color:#1e40af;padding:8px;border-radius:6px;
- font-size:.85rem;text-align:center;margin-bottom:15px;border:1px dashed #bfdbfe;
- font-weight:bold;cursor:pointer
-
-}
-.sidebar-container{
- width:260px;background:#0f172a;color:white;padding:20px;display:flex;
- flex-direction:column;gap:15px;position:fixed;left:-260px;top:0;bottom:0;
- z-index:9999;transition:left .3s ease;box-shadow:5px 0 15px rgba(0,0,0,.3);
- overflow-y:auto
-}
+.swipe-hint{width:100%;background:#eff6ff;color:#1e40af;padding:8px;border-radius:6px;font-size:.85rem;text-align:center;margin-bottom:15px;border:1px dashed #bfdbfe;font-weight:bold;cursor:pointer}
+.sidebar-container{width:260px;background:#0f172a;color:white;padding:20px;display:flex;flex-direction:column;gap:15px;position:fixed;left:-260px;top:0;bottom:0;z-index:9999;transition:left .3s ease;box-shadow:5px 0 15px rgba(0,0,0,.3);overflow-y:auto}
 .sidebar-container.open{left:0}
-.swipe-handle{
- position:fixed;left:0;top:0;bottom:0;width:25px;z-index:9998;background:transparent
-}
-.close-menu-btn{
- background:#dc2626;color:white;border:0;p
-
-adding:8px;border-radius:4px;
- font-weight:bold;cursor:pointer
-}
-.nav-btn{
- background:transparent;color:#94a3b8;border:0;padding:12px;text-align:left;
- font-size:1rem;cursor:pointer;border-radius:6px;width:100%;display:block
-}
+.swipe-handle{position:fixed;left:0;top:0;bottom:0;width:25px;z-index:9998;background:transparent}
+.close-menu-btn{background:#dc2626;color:white;border:0;padding:8px;border-radius:4px;font-weight:bold;cursor:pointer}
+.nav-btn{background:transparent;color:#94a3b8;border:0;padding:12px;text-align:left;font-size:1rem;cursor:pointer;border-radius:6px;width:100%;display:block}
 .nav-btn.active,.nav-btn:hover{background:var(--p-color);color:white}
-.page-header{
- display:flex;justify-content:space-between;align-items:center;gap:10px;
- margin-bottom:15px;border-bottom:2px solid #e2e8f0;padding-bottom:10px
-}
+.page-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px;border-bottom:2px solid #e2e8f0;padding-bottom:10px}
 .page-header h2{font-size:2rem}
-.form-group{margin-bottom:15px}
-
-.form-group label{display:block;margin-bottom:5px;font-weight:bold}
-.form-group input{
- width:100%;padding:10px;border:2px solid var(--bd);border-radius:6px;font-size:1rem
-}
-.invoice-box{width:100%;overflow-x:auto}
-.table-header,.table-row{min-width:600px}
-.table-row input{font-size:1rem}
+.form-group{margin-bottom:15px}.form-group label{display:block;margin-bottom:5px;font-weight:bold}
+.form-group input{width:100%;padding:10px;border:2px solid var(--bd);border-radius:6px;font-size:1rem}
+.invoice-box{width:100%;overflow-x:auto}.table-header,.table-row{min-width:600px}.table-row input{font-size:1rem}
 .btn-save,.btn-pdf{min-height:60px}
-.history-card{
- width:100%;border:2px solid var(--bd);border-radius:8px;background:white;
- overflow:hidden;margin-bottom:12px
-}
-.history-card-header{
- background:#0f172a;color:white;padding:12px 15px;font-size:1.1rem;font-weight:bold
-}
-.history-card-body{padding:15px}
+.history-card{width:100%;border:2px solid var(--bd);border-radius:8px;background:white;overflow:hidden;margin-bottom:12px}
+.history-card-header{background:#0f172a;color:white;padding:12px 15px;font-size:1.1rem;font-weight:bold;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.history-delete-btn{background:#dc2626;color:white;border:0;border-radius:7px;padding:7px 10px;font-size:18px;line-height:1;cursor:pointer;flex:0 0 auto}
+.history-delete-btn:active{transform:scale(.95)}
+.history-card-body{padding:15px}.history-date{display:inline-block;background:#eff6ff;color:#2563eb;padding:7px 10px;border-radius:5px;font-weight:bold;margin-bottom:10px}
+.history-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:1rem}.history-item-name{flex:1;min-width:0}.history-item-qty{color:#64748b;white-space:nowrap}.history-item-price{font-weight:bold;white-space:nowrap}
+.voice-btn.listening{animation:voicePulse 1s infinite}@keyframes voicePulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
-.history-date{
- display:inline-block;background:#eff6ff;color:#2563eb;padding:7px 10px;
- border-radius:5px;font-weight:bold;margin-bottom:10px
-}
-.history-item{
- display:flex;justify-content:space-between;align-items:center;gap:10px;
- padding:8px 0;font-size:1rem
-}
-.history-item-name{flex:1;min-width:0}
-.history-item-qty{color:#64748b;white-space:nowrap}
-.history-item-price{font-weight:bold;white-space:nowrap}
-.voice-btn.listening{animation:voicePulse 1s infinite}
-@keyframes voicePulse{
- 0%{transform:scale(1)}50%
-
-{transform:scale(1.08)}100%{transform:scale(1)}
-}
-
-/* PDF PREVIEW */
-#pdfPreview{
- display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
- z-index:20000;overflow:auto;padding:15px
-}
-.preview-tools{
- max-width:850px;margin:0 auto 10px;display:flex;gap:10px;
- position:sticky;top:0;z-index:2
-}
-.preview-tools button{
- flex:1;padding:13px;border:0;border-radius:7px;color:white;
- font-weight:bold;font-size:16px;cursor:pointer
-
-}
-.invoice-paper{
- width:210mm;min-height:297mm;background:white;margin:auto;
- padding:12mm;color:#111;box-shadow:0 3px 20px rgba(0,0,0,.4)
-}
-.inv-title{text-align:center;font-size:25px;font-weight:bold}
-.inv-sub{text-align:center;font-size:14px;margin-top:5px}
-.inv-line{border-top:2px solid #111;margin:10px 0}
-.inv-info{
- display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:14px
-}
-.inv-table{
- width:100%;border-collapse:collapse;margin-top:12px;font-
-
-size:13px
-}
-.inv-table th,.inv-table td{
- border:1px solid #333;padding:7px;text-align:left
-}
-.inv-table th{text-align:center;background:#eee}
-.inv-table td.num{text-align:right}
-.inv-summary{
- margin-left:auto;width:55%;margin-top:10px;font-size:14px
-}
-.inv-summary div{
- display:flex;justify-content:space-between;padding:4px 0
-}
-.inv-grand{
- border-top:2px solid #111;border-bottom:2px solid #111;
- font-size:18px;font-
-
-weight:bold;padding:8px 0!important
-}
-.words{
- margin-top:12px;border:1px solid #333;padding:8px;font-weight:bold
-}
-.inv-footer{
- margin-top:35px;display:flex;justify-content:space-between;font-size:13px
-}
-@media(max-width:600px){
- .main-content{padding:15px 10px}
- .page{padding:15px}
- .page-header h2{font-size:1.55rem}
- .btn-group{display:flex;gap:10px}
- .btn-save{flex:2!important}
- .btn-pdf{flex:1!important}
- .btn-save,.btn-pdf{font-size:1rem!important;min-height:70px}
- .search-container{grid-template-columns:1fr!important}
-
- .invoice-paper{width:210mm;margin:0}
-}
-@media print{
- body *{visibility:hidden!important}
- #printArea,#printArea *{visibility:visible!important}
- #printArea{
-   position:absolute!important;left:0!important;top:0!important;width:100%!important;
- }
- .invoice-paper{
-   box-shadow:none!important;margin:0!important;width:210mm!important;
-   min-height:297mm!important
- }
-}
 </style>
 </head>
-
 <body>
 
-
 <div class="swipe-handle" id="menuSwipeHandle"></div>
-
 <div class="sidebar-container" id="appSidebar">
-
-<button class="close-menu-btn" onclick="toggleMobileMenu(false)">
-❌ मेनू बंद करें
-</button>
-
-<h3 style="text-align:center;border-bottom:1px solid #334155;padding-bottom:10px;color:white">
-बिलिंग मेनू
-</h3>
-
-<button class="nav-btn active" onclick="switchPage('bill-pg',this)">
-📝 नया बिल बनाएँ
-
-</button>
-
-<button class="nav-btn" onclick="switchPage('voice-pg',this)">
-🎤 पुराना डेटा बोलकर भरें
-</button>
-
-<button class="nav-btn" onclick="switchPage('hist-pg',this)">
-📊 View History
-</button>
-
+<button class="close-menu-btn" onclick="toggleMobileMenu(false)">❌ मेनू बंद करें</button>
+<h3 style="text-align:center;border-bottom:1px solid #334155;padding-bottom:10px;color:white">बिलिंग मेनू</h3>
+<button class="nav-btn active" onclick="switchPage('bill-pg',this)">📝 नया बिल बनाएँ</button>
+<button class="nav-btn" onclick="switchPage('voice-pg',this)">🎤 पुराना डेटा बोलकर भरें</button>
+<button class="nav-btn" onclick="switchPage('hist-pg',this)">📊 View History</button>
 <div>
-<label class="nav-btn"
-style="background:#5b21b6;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;cursor:pointer">
-📥 पूरा Backup Folder Load करें
-<input
-type="file"
-id="driveImportFile"
-
-webkitdirectory
-directory
-multiple
-onchange="loadFromDrive()"
-style="display:none">
-</label>
-
-<button class="nav-btn"
-style="background:#475569;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;margin-top:8px"
-onclick="saveToDrive()">
-📤 पूरा Backup Folder Save करें
-</button>
+<label class="nav-btn" style="background:#5b21b6;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;cursor:pointer">📥 पूरा Backup Folder Load करें
+<input type="file" id="driveImportFile" webkitdirectory directory multiple onchange="loadFromDrive()" style="display:none"></label>
+<button class="nav-btn" style="background:#475569;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;margin-top:8px" onclick="saveToDrive()">📤 पूरा Backup Folder Save करें</button>
 </div>
-
 </div>
 
 <div class="main-content">
+<div class="swipe-hint" onclick="toggleMobileMenu(true)">👈 मेनू के लिए बाएँ से दाएँ स्वाइप करें या यहाँ क्लिक करें</div>
 
-<div class="swipe-hint" 
-
-onclick="toggleMobileMenu(true)">
-👈 मेनू के लिए बाएँ से दाएँ स्वाइप करें या यहाँ क्लिक करें
-</div>
-
-<!-- BILL PAGE -->
 <div id="bill-pg" class="page active">
+<div class="page-header"><h2>नया बिल जनरेट</h2><input type="date" id="billDate" style="padding:8px;border:2px solid #94a3b8;border-radius:6px"></div>
+<div class="form-group"><label>कस्टमर का नाम:</label><input type="text" id="custName" placeholder="जैसे: कल्पेश भाई"></div>
+<div class="invoice-box" style="border:2px solid var(--bd);border-radius:6px;margin-bottom:15px">
+<div class="table-header" style="display:flex;border-bottom:1px solid var(--bd);font-weight:bold;background:#e2e8f0">
+<div style="width:40px;text-align:center;padding:8px">No.</div><div style="flex:2;padding:8px">आइटम का नाम</div><div style="flex:1.2;padding:8px">क्वांटिटी</div><div style="flex:1;padding:8px">प्राइस (₹)</div>
+</div><div id="rows-container"></div></div>
 
-<div class="page-header">
-<h2>नया बिल जनरेट</h2>
-<input type="date" id="billDate"
-style="padding:8px;border:2px solid #94a3b8;border-radius:6px">
-</div>
-
-<div class="form-group">
-<label>कस्टमर का नाम:</label>
-<input type="text" id="custName" placeholder="जैसे: कल्पेश भाई">
-</div>
-
-<div class="invoice-box"
-style="border:2px solid var(--bd);border-radius:6px;margin-bottom:15px">
-
-<div class="table-header"
-style="display:flex;border-bottom:1px solid var(--bd);font-weight:bold;background:#e2e8f0">
-
-<div style="width:40px;text-align:center;padding:8px">No.</div>
-<div style="flex:2;padding:8px">आइटम का नाम</div>
-<div style="flex:1.2;padding:8px">क्वांटिटी</div>
-<div style="flex:1;padding:8px">प्राइस (₹)</div>
-
-</div>
-
-<div id="rows-container"></div>
-
-</div>
-
-<div class="total-section"
-style="background:#dcfce7;color:#14532d;padding:15px;border-radius:6px;
-display:flex;justify-content:space-between;font-size:1.2rem;font-weight:bold;
-margin-bottom:15px;border:2px solid #bbf7d0">
-
-<span>कुल अमाउंट (Total):</span>
-<span>₹ <span id="totalTxt">0.00</span></span>
+<div class="total-section" style="background:#dcfce7;color:#14532d;padding:15px;border-radius:6px;display:flex;justify-content:space-between;font-size:1.2rem;font-weight:bold;margin-bottom:15px;border:2px solid #bbf7d0">
+<span>कुल अमाउंट (Total):</span><span>₹ <span id="totalTxt">0.00</span></span>
 </div>
 
 <div class="btn-group" style="display:flex;gap:10px;margin-bottom:15px">
+<button class="btn-save" style="background:var(--p-color);color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:2" onclick="saveBill()">💾 बिल सेव करें</button>
+<button type="button" id="pdfPreviewBtn" class="btn-pdf" style="background:#dc2626;color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:1">📄 Print / PDF</button>
+</div></div>
 
-<button class="btn-save"
-style="background:var(--p-
-
-color);color:white;border:0;padding:12px;
-font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:2"
-onclick="saveBill()">
-💾 बिल सेव करें
-</button>
-
-<button class="btn-pdf"
-style="background:#dc2626;color:white;border:0;padding:12px;
-font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:1"
-onclick="openPdfPreview()">
-📄 Print / PDF
-</button>
-
-</div>
-</div>
-
-<!-- VOICE PAGE -->
 <div id="voice-pg" class="page">
-
-
 <h2 style="margin-bottom:10px">🎤 पुराना डेटा बोलकर भरें</h2>
-
-<p style="font-size:.88rem;color:#64748b;margin-bottom:15px">
-उदाहरण: "ग्राहक सुरेश भाई तारीख 15 मार्च 2023 आइटम धूप क्वांटिटी 5 पैकेट प्राइस 450"
-</p>
-
-<button class="voice-btn" id="startVoiceBtn"
-style="background:#dc2626;color:white;border:0;width:80px;height:80px;
-border-radius:50%;font-size:2rem;cursor:pointer;display:block;margin:20px auto"
-onclick="startVoiceRecognition()">🎙️</button>
-
-<div id="voiceStatus"
-style="text-align:center;font-weight:bold;color:#475569;margin-bottom:15px">
-माइक बंद है। चालू करने के लिए दबाएँ।
+<p style="font-size:.88rem;color:#64748b;margin-bottom:15px">उदाहरण: "ग्राहक सुरेश भाई तारीख 15 मार्च 2023 आइटम धूप क्वांटिटी 5 पैकेट प्राइस 450"</p>
+<button class="voice-btn" id="startVoiceBtn" style="background:#dc2626;color:white;border:0;width:80px;height:80px;border-radius:50%;font-size:2rem;cursor:pointer;display:block;margin:20px auto" onclick="startVoiceRecognition()">🎙️</button>
+<div id="voiceStatus" style="text-align:center;font-weight:bold;color:#475569;margin-bottom:15px">माइक बंद है। चालू करने के लिए दबाएँ।</div>
+<div style="background:#f1f5f9;padding:15px;border-radius:6px;margin-bottom:15px;border:1px solid #cbd5e1;line-height:1.8"><strong>📝 पहचाना गया डेटा:</strong><br>• ग्राहक: <span id="v-cust" style="color:#2563eb;font-weight:bold">-</span><br>• तारीख: <span id="v-date" style="color:#2563eb;font-weight:bold">-</span><br>• आइटम: <span id="v-item" style="color:#2563eb;font-weight:bold">-</span><br>• क्वांटिटी: <span id="v-qty" style="color:#2563eb;font-weight:bold">-</span><br>• प्राइस: <span id="v-price" style="color:#2563eb;font-weight:bold">-</span></div>
+<button class="btn-save" style="background:#16a34a;color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;width:100%;cursor:pointer" onclick="saveVoiceBill()">💾 इस बिल को हिस्ट्री में लोड करें</button>
 </div>
 
-<div style="background:#f1f5f9;padding:15px;border-radius:6px;
-margin-bottom:15px;border:1px solid #cbd5e1;line-height:1.8">
-
-<strong>📝 पहचाना गया डेटा:</strong><br>
-• ग्राहक: <span id="v-cust" style="color:#2563eb;font-weight:bold">-</span><br>
-• तारीख: <span id="v-date" style="color:#2563eb;font-weight:bold">-</span><br>
-• आइटम: <span id="v-item" 
-
-style="color:#2563eb;font-weight:bold">-</span><br>
-• क्वांटिटी: <span id="v-qty" style="color:#2563eb;font-weight:bold">-</span><br>
-• प्राइस: <span id="v-price" style="color:#2563eb;font-weight:bold">-</span>
-
-</div>
-
-<button class="btn-save"
-style="background:#16a34a;color:white;border:0;padding:12px;
-font-size:1rem;font-weight:bold;border-radius:6px;width:100%;cursor:pointer"
-onclick="saveVoiceBill()">
-💾 इस बिल को हिस्ट्री में लोड करें
-</button>
-
-</div>
-
-
-<!-- HISTORY -->
 <div id="hist-pg" class="page">
-
 <h2 style="margin-bottom:15px">बिल हिस्ट्री और सर्च</h2>
-
-<div class="search-container"
-style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px">
-
-<div class="form-group">
-<label>कस्टमर खोजें:</label>
-<input type="text" id="sCust" oninput="showHistory()" placeholder="जैसे: कल्पेश">
+<div class="search-container" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px">
+<div class="form-group"><label>कस्टमर खोजें:</label><input type="text" id="sCust" oninput="showHistory()" placeholder="जैसे: कल्पेश"></div>
+<div class="form-group"><label>आइटम खोजें:</label><input type="text" id="sItem" oninput="showHistory()" placeholder="जैसे: धूप"></div>
+</div><div id="histArea"></div></div>
 </div>
 
-<div class="form-group">
-<label>आइटम खोजें:</label>
-
-<input type="text" id="sItem" oninput="showHistory()" placeholder="जैसे: धूप">
-</div>
-
-</div>
-
-<div id="histArea"></div>
-</div>
-
-</div>
-
-<!-- PDF PREVIEW -->
-<div id="pdfPreview">
-
-<div class="preview-tools">
-<button style="background:#16a34a" onclick="printInvoice()">
-🖨️ Print / Save PDF
-</button>
-
-<button style="background:#dc2626" onclick="closePdfPreview()">
-❌ बंद करें
-</button>
-</div>
-
-<div id="printArea"></div>
-</div>
 
 <script>
-
-/* =========================
-   MENU / SWIPE
-========================= */
-
 let touchStartX=0;
-
-document.addEventListener("touchstart",function(e){
- touchStartX=e.changedTouches[0].screenX
-
-;
-},{passive:true});
-
-document.addEventListener("touchend",function(e){
- const endX=e.changedTouches[0].screenX;
-
- if(endX-touchStartX>70 && touchStartX<80){
-   toggleMobileMenu(true);
- }
-
- if(touchStartX-endX>70){
-   toggleMobileMenu(false);
- }
-},{passive:true});
-
-function toggleMobileMenu(open){
- const sidebar=document.getElementById("appSid
-
-ebar");
-
- if(open) sidebar.classList.add("open");
- else sidebar.classList.remove("open");
-}
-
-function switchPage(id,btn){
-
- document.querySelectorAll(".page").forEach(p=>{
-   p.classList.remove("active");
- });
-
- document.querySelectorAll(".nav-btn").forEach(b=>{
-   b.classList.remove("active");
- });
-
- const page=document.getElementById(id);
-
- if(page) page.classList.add("active");
-
- if(btn) btn.classList.add("active");
-
- toggleMobileMenu(false);
-
- if(id==="hist-pg") showHistory();
-}
-
-/* =========================
-   CREATE 9 ROWS
-========================= */
+document.addEventListener("touchstart",function(e){touchStartX=e.changedTouches[0].screenX},{passive:true});
+document.addEventListener("touchend",function(e){const endX=e.changedTouches[0].screenX;if(endX-touchStartX>70&&touchStartX<80)toggleMobileMenu(true);if(touchStartX-endX>70)toggleMobileMenu(false)},{passive:true});
+function toggleMobileMenu(open){const sidebar=document.getElementById("appSidebar");if(open)sidebar.classList.add("open");else sidebar.classList.remove("open")}
+function switchPage(id,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));const page=document.getElementById(id);if(page)page.classList.add("active");if(btn)btn.classList.add("active");toggleMobileMenu(false);if(id==="hist-pg")showHistory()}
 
 function createRows(){
-
- const box=document.getElementById("rows-container");
- box.innerHTML="";
-
- for(let i=1;i<=9;i++){
-
-
-  box.innerHTML+=`
-  <div class="table-row"
-  style="display:flex;border-bottom:1px solid var(--bd);min-height:60px">
-
-   <div style="width:40px;text-align:center;padding:8px;background:#f1f5f9">
-   ${i}
-   </div>
-
-   <div style="flex:2;padding:4px">
-    <input class="i-name"
-    type="text"
-    style="width:100%;padding:8px"
-    placeholder="आइटम का नाम">
-   </div>
-
-   <div style="flex:1.2;padding:4px">
-    <input class="i-qty"
-
-    type="text"
-    style="width:100%;padding:8px"
-    placeholder="जैसे: 5 kg">
-   </div>
-
-   <div style="flex:1;padding:4px">
-    <input class="i-price"
-    type="number"
-    step="0.01"
-    style="width:100%;padding:8px"
-    placeholder="0"
-    oninput="calcTotal()">
-   </div>
-
-  </div>`;
- }
-}
-
-/* =========================
-   TOTAL
-========================= */
-
+const box=document.getElementById("rows-container");
+box.innerHTML="";
+for(let i=1;i<=9;i++){
+box.innerHTML+=`<div class="table-row" style="display:flex;border-bottom:1px solid var(--bd);min-height:60px"><div style="width:40px;text-align:center;padding:8px;background:#f1f5f9">${i}</div><div style="flex:2;padding:4px"><input class="i-name" type="text" style="width:100%;padding:8px" placeholder="आइटम का नाम"></div><div style="flex:1.2;padding:4px"><input class="i-qty" type="text" style="width:100%;padding:8px" placeholder="जैसे: 5 kg"></div><div style="flex:1;padding:4px"><input class="i-price" type="number" step="0.01" style="width:100%;padding:8px" placeholder="0" oninput="calcTotal()"></div></div>`
+}}
 
 function calcTotal(){
-
- let total=0;
-
- document.querySelectorAll(".table-row").forEach(row=>{
-
-  const qty=parseFloat(
-    row.querySelector(".i-qty").value.replace(",","." )
-  );
-
-  const rate=parseFloat(
-    row.querySelector(".i-price").value
-  );
-
-  if(!isNaN(rate)){
-
-   /*
-      अगर quantity में नंबर है:
-
-      Quantity × Rate
-
-      अगर quantity खाली है:
-      Rate को ही amount माना जाएगा
-   */
-
-   const quantity=isNaN(qty)?1:qty;
-
-   total+=quantity*rate;
-  }
-
- });
-
- document.getElementById("totalTxt").innerText=
- total.toFixed(2);
+let total=0;
+document.querySelectorAll(".table-row").forEach(row=>{
+const rate=parseFloat(row.querySelector(".i-price").value);
+if(!isNaN(rate)){
+total+=rate;
 }
-
-/* =========================
-   SAVE NORMAL BILL
-
-========================= */
+});
+document.getElementById("totalTxt").innerText=total.toFixed(2);
+}
 
 function saveBill(){
+const name=document.getElementById("custName").value.trim();
+const rawDate=document.getElementById("billDate").value;
 
- const name=document.getElementById("custName").value.trim();
- const rawDate=document.getElementById("billDate").value;
+if(!name){
+alert("कृपया कस्टमर का नाम लिखें!");
+return
+}
 
- if(!name){
-  alert("कृपया कस्टमर का नाम लिखें!");
-  return;
- }
+if(!rawDate){
+alert("कृपया तारीख चुनें!");
+return
+}
 
- if(!rawDate){
-  alert("कृपया तारीख चुनें!");
-  return;
- }
+const formattedDate=new Date(rawDate+"T00:00:00").toLocaleDateString("hi-IN");
+const items=[];
+let total=0;
 
- const formattedDate=
- new Date(rawDate+"T00:00:00").toLocaleDateString("hi-IN");
+document.querySelectorAll(".table-row").forEach(row=>{
+const itemName=row.querySelector(".i-name").value.trim();
+const qtyText=row.querySelector(".i-qty").value.trim();
+const rate=parseFloat(row.querySelector(".i-price").value);
 
- const items=[];
- let total=0;
+if(itemName&&!isNaN(rate)){
+const amount=rate;
+items.push({
+name:itemName,
+qty:qtyText,
+price:rate,
+amount:amount
+});
+total+=amount;
+}
+});
 
- document.querySelectorAll(".table-row").forEach(row=>{
+if(items.length===0){
+alert("कृपया कम से कम 1 आइटम भरें!");
+return
+}
 
-  const itemName=row.querySelector(".i-name").value.trim();
-  const qtyText=row.querySelector(".i-qty").value.trim();
-  const rate=parseFloat(row.querySelector(".i-price").value);
+const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
+list.push({
+id:Date.now(),
+customer:name,
+date:formattedDate,
+rawDate:rawDate,
+items:items,
+total:total
+});
 
-  if(itemName && !isNaN(rate)){
-
-   const q=parseFloat(qtyText.replace(",","." ));
-   const quantity=isNaN(q)?1:q;
-
-   const amount=quantity*rate;
-
-   items.push({
-    name:itemName,
-    qty:qtyText,
-    price:rate,
-    amount:amount
-   });
-
-   total+=amount;
-  }
- });
-
- if(items.length===0){
-  alert("कृपया कम से कम 1 आइटम भरें!");
-  return;
- }
-
-
- const list=JSON.parse(
-  localStorage.getItem("my_bills")||"[]"
- );
-
- list.push({
-  id:Date.now(),
-  customer:name,
-  date:formattedDate,
-  rawDate:rawDate,
-  items:items,
-  total:total
- });
-
- localStorage.setItem("my_bills",JSON.stringify(list));
-
- alert("✅ बिल सफलतापूर्वक सेव हो गया है!");
-
- 
+localStorage.setItem("my_bills",JSON.stringify(list));
+alert("✅ बिल सफलतापूर्वक सेव हो गया है!");
 
 document.getElementById("custName").value="";
-
- document.querySelectorAll(
- ".i-name,.i-qty,.i-price"
- ).forEach(el=>el.value="");
-
- document.getElementById("totalTxt").innerText="0.00";
+document.querySelectorAll(".i-name,.i-qty,.i-price").forEach(el=>el.value="");
+document.getElementById("totalTxt").innerText="0.00"
 }
 
-/* =========================
-   PDF CALCULATIONS
-========================= */
+function escapeHtml(value){return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
 
-function getCurrentInvoiceData(){
-
- const customer=
- document.getElementById("custName").val
-
-ue.trim();
-
- const date=
- document.getElementById("billDate").value;
-
- const items=[];
-
- document.querySelectorAll(".table-row").forEach(row=>{
-
-  const name=row.querySelector(".i-name").value.trim();
-  const qtyText=row.querySelector(".i-qty").value.trim();
-  const rate=parseFloat(row.querySelector(".i-price").value);
-
-  if(name && !isNaN(rate)){
-
-   const q=parseFloat(qtyText.replace(",","." ));
-   const qty=isNaN(q)?1:q;
-
-   items.push({
-    name:name,
-    qty:qtyText||"1",
-    rate:rate,
-    amount:qty*rate
-   });
-  }
- });
-
- let taxable=0;
-
- items.forEach(i=>taxable+=i.amount);
-
- const cgst=taxable*0.025;
- const sgst=taxable*0.025;
-
- const beforeRound=taxable+cgst+sgst;
-
-
- const grand=Math.round(beforeRound);
-
- const roundOff=grand-beforeRound;
-
- return {
-  customer:customer||"—",
-  date:date?
-   new Date(date+"T00:00:00").toLocaleDateString("en-IN"):
-   new Date().toLocaleDateString("en-IN"),
-  items:items,
-  taxable:taxable,
-  cgst:cgst,
-  sgst:sgst,
-  beforeRound:beforeRound,
-  roundOff:roundOff,
-  grand:grand
- };
-}
-
-
-/* =========================
-   NUMBER TO WORDS
-========================= */
-
-function numberToWords(num){
-
- num=Math.round(num);
-
- if(num===0) return "Zero Only";
-
- const ones=[
-  "","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
-  "Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen",
-  "Sixteen","Seventeen","Eighteen","Nineteen"
- ];
-
- const tens=[
-  "","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"
- ];
-
- function under1000(n){
-
-  let s="";
-
-  if(n>=100){
-   s+=ones[Math.floor(n/100)]+" Hundred ";
-   n%=100;
-  }
-
-  if(n>=20){
-   s+=tens[Math.floor(n/10)];
-   if(n%10) s+=" "+ones[n%10];
-  }else if(n>0){
-   s+=ones[n];
-  }
-
-
-  return s.trim();
- }
-
- let result="";
-
- if(num>=10000000){
-  result+=under1000(Math.floor(num/10000000))+" Crore ";
-  num%=10000000;
- }
-
- if(num>=100000){
-  result+=under1000(Math.floor(num/100000))+" Lakh ";
-  num%=100000;
- }
-
- if(num>=1000){
-  result+=under1000(Math.floor(num/1000))+" Thousand ";
-
-  num%=1000;
- }
-
- if(num>0){
-  result+=under1000(num);
- }
-
- return result.trim()+" Only";
-}
-
-/* =========================
-   OPEN PDF PREVIEW
-========================= */
-
-function openPdfPreview(){
-
- const data=getCurrentInvoiceData();
-
- if(data.items.length===0){
-  alert("कृपया कम से कम 1 आइटम भरें!");
-  return;
-
- }
-
- let rows="";
-
- data.items.forEach((item,index)=>{
-
-  rows+=`
-  <tr>
-   <td style="text-align:center">${index+1}</td>
-   <td>${escapeHtml(item.name)}</td>
-   <td style="text-align:center">${escapeHtml(item.qty)}</td>
-   <td class="num">₹${item.rate.toFixed(2)}</td>
-   <td class="num">₹${item.amount.toFixed(2)}</td>
-  </tr>`;
- });
-
- const html=`
-
-
- <div class="invoice-paper">
-
-  <div class="inv-title">
-   TAX INVOICE
-  </div>
-
-  <div class="inv-sub">
-   स्मार्ट बिलिंग और इनवॉइस
-  </div>
-
-  <div class="inv-line"></div>
-
-  <div class="inv-info">
-
-   <div>
-    <strong>Customer Name:</strong>
-    ${escapeHtml(data.customer)}
-   </div>
-
-   <div style="text-align:right">
-
-    <strong>Date:</strong>
-    ${data.date}
-   </div>
-
-  </div>
-
-  <div class="inv-line"></div>
-
-  <table class="inv-table">
-
-   <thead>
-    <tr>
-     <th style="width:45px">No.</th>
-     <th>Item Description</th>
-     <th>Qty</th>
-     <th>Rate</th>
-     <th>Amount</th>
-    </tr>
-   </thead>
-
-   <tbody>
-
-    ${rows}
-   </tbody>
-
-  </table>
-
-  <div class="inv-summary">
-
-   <div>
-    <span>Taxable Amount</span>
-    <span>₹${data.taxable.toFixed(2)}</span>
-   </div>
-
-   <div>
-    <span>CGST @ 2.5%</span>
-    <span>₹${data.cgst.toFixed(2)}</span>
-   </div>
-
-   <div>
-    <span>SGST @ 2.5%</span>
-    <span>₹${data.sgst.toFixed(2)}</span>
-
-   </div>
-
-   <div>
-    <span>Round Off</span>
-    <span>₹${data.roundOff.toFixed(2)}</span>
-   </div>
-
-   <div class="inv-grand">
-    <span>GRAND TOTAL</span>
-    <span>₹${data.grand.toFixed(0)}</span>
-   </div>
-
-  </div>
-
-  <div class="words">
-   Grand Total in Words:
-   ${numberToWords(data.grand)}
-  </div>
-
-  <div class="inv-footer">
-
-   <span>Thank You</span>
-   <span>Authorized Signature</span>
-  </div>
-
- </div>`;
-
- document.getElementById("printArea").innerHTML=html;
- document.getElementById("pdfPreview").style.display="block";
-}
-
-/* =========================
-   PRINT / SAVE PDF
-========================= */
-
-function printInvoice(){
-
- /*
-
-   Browser का native print preview खुलेगा।
-   वहाँ Android/Chrome में:
-   Print → Save as PDF
-   किया जा सकता है।
- */
-
- window.print();
-}
-
-function closePdfPreview(){
- document.getElementById("pdfPreview").style.display="none";
-}
-
-function escapeHtml(value){
-
- return String(value)
-  .replace(/&/g,"&amp;")
-  .replace(/</g,"&lt;")
-  .replace(/>/g,"&gt;")
-
-  .replace(/"/g,"&quot;")
-  .replace(/'/g,"&#039;");
-}
-
-/* =========================
-   VOICE
-========================= */
-
+/* ========================= VOICE ========================= */
 let recognition=null;
 
-function startVoiceRecognition(){
+async function startVoiceRecognition(){
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SpeechRecognition){
+alert("आपके browser में Voice Recognition उपलब्ध नहीं है।");
+return
+}
 
- const SpeechRecognition=
- window.SpeechRecognition||
- window.webkitSpeechRecognition;
+if(recognition){
+try{recognition.stop()}catch(e){}
+recognition=null;
+document.getElementById("startVoiceBtn").classList.remove("listening");
+document.getElementById("voiceStatus").innerText="माइक बंद है।";
+return
+}
 
- if(!SpeechRecognition){
-  alert("आपके browser में Voice Recognition उपलब्ध नहीं है।");
-  return;
- }
+const status=document.getElementById("voiceStatus");
 
+try{
+if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+status.innerText="🎤 माइक की अनुमति माँगी जा रही है...";
+const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+stream.getTracks().forEach(track=>track.stop());
+}
+}catch(e){
+document.getElementById("startVoiceBtn").classList.remove("listening");
+if(e&&e.name==="NotAllowedError") status.innerText="🎤 माइक की अनुमति नहीं मिली। फोन की App Settings में Microphone अनुमति चालू करें।";
+else status.innerText="🎤 माइक शुरू नहीं हो पाया। Microphone permission जाँचें।";
+return;
+}
 
- if(recognition){
-  recognition.stop();
-  recognition=null;
-  document.getElementById("startVoiceBtn")
-   .classList.remove("listening");
-  document.getElementById("voiceStatus")
-   .innerText="माइक बंद है।";
-  return;
- }
+recognition=new SpeechRecognition();
+recognition.lang="hi-IN";
+recognition.interimResults=false;
+recognition.continuous=false;
+document.getElementById("startVoiceBtn").classList.add("listening");
+status.innerText="सुन रहा हूँ... बोलिए भाई!";
 
- recognition=new SpeechRecognition();
- recognition.lang="hi-IN";
- recognition.interimResults=false;
- recognition.continuous=false;
+recognition.onresult=function(event){
+const text=event.results[event.results.length-1][0].transcript.toLowerCase();
+document.getElementById("startVoiceBtn").classList.remove("listening");
+parseVoiceText(text)
+};
 
- document.getElementById("startVoiceBtn")
-  .classList.add("listening");
+recognition.onerror=function(event){
+document.getElementById("startVoiceBtn").classList.remove("listening");
+if(event&&event.error==="not-allowed")status.innerText="🎤 माइक की अनुमति नहीं मिली। App Settings में Microphone अनुमति चालू करें।";
+else if(event&&event.error==="audio-capture")status.innerText="🎤 माइक उपलब्ध नहीं है। Microphone permission जाँचें।";
+else status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
+};
 
- document.getElementById("voiceStatus")
+recognition.onend=function(){
+document.getElementById("startVoiceBtn").classList.remove("listening")
+};
 
-  .innerText="सुन रहा हूँ... बोलिए भाई!";
-
- recognition.onresult=function(event){
-
-  const text=
-  event.results[event.results.length-1][0]
-  .transcript.toLowerCase();
-
-  document.getElementById("startVoiceBtn")
-   .classList.remove("listening");
-
-  parseVoiceText(text);
- };
-
- recognition.onerror=function(){
-
-  document.getElementById("startVoiceBtn")
-   .classList.remove("listening");
-
-  document.getElementById("voiceStatus")
-   .innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।";
- };
-
- recognition.onend=function(){
-  document.getElementById("startVoiceBtn")
-   .classList.remove("listening");
- };
-
- try{
-  recognition.start();
- }catch(e){
-  document.getElementById("voiceStatus")
-   .innerText="माइक शुरू नहीं हो पाया।";
- }
+try{
+recognition.start()
+}catch(e){
+document.getElementById("startVoiceBtn").classList.remove("listening");
+status.innerText="माइक शुरू नहीं हो पाया।"
+}
 }
 
 function parseVoiceText(text){
+let cust="-",date=new Date().toLocaleDateString("hi-IN"),item="-",qty="-",price="0";
 
- let cust="-";
- let date=new Date().toLocaleDateString("hi-IN");
- let item="-";
- let qty="-";
- let price="0";
+let m=text.match(/(?:ग्राहक|कस्टमर|नाम)\s*(.*?)(?=\s*(?:तारीख|दिनांक|डेट|आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+if(m)cust=m[1].trim();
 
- let m=text.match(/(?:ग्राहक|कस्टमर|नाम)\s*(.*?)(?=\s*(?:तारीख|दिनांक|डेट|आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let d=text.match(/(?:तारीख|दिनांक|डेट)\s*(.*?)(?=\s*(?:आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+if(d)date=d[1].trim();
 
- if(m) cust=m[1].trim();
+let i=text.match(/(?:आइटम|चीज़|सामान)\s*(.*?)(?=\s*(?:क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+if(i)item=i[1].trim();
 
- let d=text.match(/(?:तारीख|दिनांक|डेट)\s*(.*?)(?=\s*(?:आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let q=text.match(/(?:क्वांटिटी|मात्रा|वजन|नग)\s*(.*?)(?=\s*(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+if(q)qty=q[1].trim();
 
- if(d) date=d[1].trim();
+let p=text.match(/(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\s*(\d+(?:\.\d+)?)/);
+if(p)price=p[1];
 
- let i=text.match(/(?:आइटम|चीज़|सामान)
-
-\s*(.*?)(?=\s*(?:क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
-
- if(i) item=i[1].trim();
-
- let q=text.match(/(?:क्वांटिटी|मात्रा|वजन|नग)\s*(.*?)(?=\s*(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
-
- if(q) qty=q[1].trim();
-
- let p=text.match(/(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\s*(\d+(?:\.\d+)?)/);
-
- if(p) price=p[1];
-
- document.getElementById("v-cust").innerText=cust;
- document.getElementById("v-date").innerText=date;
- document.getElementById("v-
-
-item").innerText=item;
- document.getElementById("v-qty").innerText=qty;
- document.getElementById("v-price").innerText="₹"+price;
-
- document.getElementById("voiceStatus")
- .innerText="पहचान लिया!";
+document.getElementById("v-cust").innerText=cust;
+document.getElementById("v-date").innerText=date;
+document.getElementById("v-item").innerText=item;
+document.getElementById("v-qty").innerText=qty;
+document.getElementById("v-price").innerText="₹"+price;
+document.getElementById("voiceStatus").innerText="पहचान लिया!"
 }
 
 function saveVoiceBill(){
+const c=document.getElementById("v-cust").innerText;
+const d=document.getElementById("v-date").innerText;
+const i=document.getElementById("v-item").innerText;
+const q=document.getElementById("v-qty").innerText;
+const p=parseFloat(document.getElementById("v-price").innerText.replace("₹",""));
 
- const c=document.getElementById("v-cust").innerText;
- const d=document.getElementById("v-date").innerText;
- const i=document.getElementById("v-item").innerText;
- const q=document.getElementById("v-qty").innerText;
- const p=parseFloat(
-
-  document.getElementById("v-price").innerText.replace("₹","")
- );
-
- if(c==="-"||i==="-"||isNaN(p)){
-  alert("डेटा अधूरा है! कृपया दोबारा बोलें।");
-  return;
- }
-
- const list=JSON.parse(
-  localStorage.getItem("my_bills")||"[]"
- );
-
- list.push({
-  id:Date.now(),
-  customer:c,
-  date:d,
-  items:[{
-   name:i,
-   qty:q,
-   price:p,
-
-   amount:p
-  }],
-  total:p
- });
-
- localStorage.setItem("my_bills",JSON.stringify(list));
-
- alert("पुराना बिल सफलतापूर्वक History में लोड हो गया!");
-
- ["v-cust","v-date","v-item","v-qty","v-price"]
- .forEach(id=>{
-  document.getElementById(id).innerText="-";
- });
-
- document.getElementById("voiceStatus").i
-
-nnerText=
- "माइक बंद है। अगला बिल बोलें।";
+if(c==="-"||i==="-"||isNaN(p)){
+alert("डेटा अधूरा है! कृपया दोबारा बोलें।");
+return
 }
 
-/* =========================
-   FOLDER BACKUP
-========================= */
+const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
 
+list.push({
+id:Date.now(),
+customer:c,
+date:d,
+items:[{
+name:i,
+qty:q,
+price:p,
+amount:p
+}],
+total:p
+});
+
+localStorage.setItem("my_bills",JSON.stringify(list));
+alert("पुराना बिल सफलतापूर्वक History में लोड हो गया!");
+
+["v-cust","v-date","v-item","v-qty","v-price"].forEach(id=>{
+document.getElementById(id).innerText="-"
+});
+
+document.getElementById("voiceStatus").innerText="माइक बंद है। अगला बिल बोलें।"
+}
+
+/* ========================= FOLDER BACKUP ========================= */
 let savedBackupFolderHandle=null;
-
-const BACKUP_DB_NAME="billing_backup_storage";
-const BACKUP_DB_STORE="handles";
+const BACKUP_DB_NAME="billing_backup_storage",BACKUP_DB_STORE="handles";
 
 function openBackupDB(){
-
- return new Promise((resolve,reject)=>{
-
-  if(!window.indexedDB){
-   reject(new Error("IndexedDB 
-
-unavailable"));
-   return;
-  }
-
-  const request=
-  indexedDB.open(BACKUP_DB_NAME,1);
-
-  request.onupgradeneeded=function(e){
-
-   const db=e.target.result;
-
-   if(!db.objectStoreNames.contains(BACKUP_DB_STORE)){
-    db.createObjectStore(BACKUP_DB_STORE);
-   }
-  };
-
-  
-
+return new Promise((resolve,reject)=>{
+if(!window.indexedDB){
+reject(new Error("IndexedDB unavailable"));
+return
+}
+const request=indexedDB.open(BACKUP_DB_NAME,1);
+request.onupgradeneeded=function(e){
+const db=e.target.result;
+if(!db.objectStoreNames.contains(BACKUP_DB_STORE))db.createObjectStore(BACKUP_DB_STORE)
+};
 request.onsuccess=()=>resolve(request.result);
-  request.onerror=()=>reject(request.error);
- });
+request.onerror=()=>reject(request.error)
+})
 }
 
 async function saveBackupFolderHandle(handle){
-
- try{
-
-  const db=await openBackupDB();
-
-  await new Promise((resolve,reject)=>{
-
-   const tx=db.transaction(BACKUP_DB_STORE,"readwrite");
-
-   tx.objectStore(BACKUP_DB_STORE)
-   .put(handle,"backupFolder");
-
-
-   tx.oncomplete=resolve;
-   tx.onerror=()=>reject(tx.error);
-  });
-
-  db.close();
-
- }catch(e){
-  console.log(e);
- }
+try{
+const db=await openBackupDB();
+await new Promise((resolve,reject)=>{
+const tx=db.transaction(BACKUP_DB_STORE,"readwrite");
+tx.objectStore(BACKUP_DB_STORE).put(handle,"backupFolder");
+tx.oncomplete=resolve;
+tx.onerror=()=>reject(tx.error)
+});
+db.close()
+}catch(e){console.log(e)}
 }
 
 async function getSavedBackupFolderHandle(){
-
- try{
-
-  const db=await openBackupDB();
-
-  const value=await new Promise((resolve,reject)=>{
-
-
-   const tx=db.transaction(BACKUP_DB_STORE,"readonly");
-
-   const request=
-   tx.objectStore(BACKUP_DB_STORE)
-   .get("backupFolder");
-
-   request.onsuccess=()=>resolve(request.result||null);
-   request.onerror=()=>reject(request.error);
-  });
-
-  db.close();
-  return value;
-
- }catch(e){
-  return null;
- }
-
+try{
+const db=await openBackupDB();
+const value=await new Promise((resolve,reject)=>{
+const tx=db.transaction(BACKUP_DB_STORE,"readonly");
+const request=tx.objectStore(BACKUP_DB_STORE).get("backupFolder");
+request.onsuccess=()=>resolve(request.result||null);
+request.onerror=()=>reject(request.error)
+});
+db.close();
+return value
+}catch(e){return null}
 }
 
 async function verifyFolderPermission(handle){
-
- if(!handle) return false;
-
- try{
-
-  if(handle.queryPermission){
-
-   const p=await handle.queryPermission({
-    mode:"readwrite"
-   });
-
-   if(p==="granted") return true;
-  }
-
-  if(handle.requestPermission){
-
-   const p=await 
-
-handle.requestPermission({
-    mode:"readwrite"
-   });
-
-   return p==="granted";
-  }
-
-  return true;
-
- }catch(e){
-  return false;
- }
+if(!handle)return false;
+try{
+if(handle.queryPermission){
+const p=await handle.queryPermission({mode:"readwrite"});
+if(p==="granted")return true
+}
+if(handle.requestPermission){
+const p=await handle.requestPermission({mode:"readwrite"});
+return p==="granted"
+}
+return true
+}catch(e){return false}
 }
 
 async function saveToDrive(){
+const raw=localStorage.getItem("my_bills");
 
- const raw=localStorage.getItem("my_bills");
+if(!raw||raw==="[]"){
+alert("कोई बिल History मौजूद नहीं है!");
+return
+}
 
- if(!raw||raw==="[]"){
-  alert("कोई बिल History मौजूद नहीं है!");
+let bills;
+try{
+bills=JSON.parse(raw)
+}catch(e){
+alert("बिल डेटा पढ़ने में समस्या आई!");
+return
+}
 
-  return;
- }
+if(!Array.isArray(bills)||!bills.length){
+alert("कोई बिल History मौजूद नहीं है!");
+return
+}
 
- let bills;
+if(!window.showDirectoryPicker){
+const blob=new Blob([JSON.stringify(bills,null,2)],{type:"application/json"});
+const url=URL.createObjectURL(blob),a=document.createElement("a");
+a.href=url;
+a.download="billing_data_backup_"+new Date().toISOString().slice(0,10)+".json";
+document.body.appendChild(a);
+a.click();
+a.remove();
+URL.revokeObjectURL(url);
+alert("इस Android/WebView में Direct Folder Save उपलब्ध नहीं है।\n\nइसलिए पूरा backup एक JSON file में download किया गया है।");
+return
+}
 
- try{
-  bills=JSON.parse(raw);
- }catch(e){
-  alert("बिल डेटा पढ़ने में समस्या आई!");
-  return;
- }
+try{
+if(!savedBackupFolderHandle)savedBackupFolderHandle=await getSavedBackupFolderHandle();
 
- if(!Array.isArray(bills)||!bills.length){
-  alert("कोई बिल History मौजूद नहीं है!");
-  return;
- }
+let permission=await verifyFolderPermission(savedBackupFolderHandle);
 
- /*
-   IMPORTANT:
-   showDirectoryPicker HTTPS/compatible browser में ही
+if(!permission){
+savedBackupFolderHandle=await window.showDirectoryPicker({mode:"readwrite"});
+permission=await verifyFolderPermission(savedBackupFolderHandle);
 
-   उपलब्ध होता है।
- */
+if(!permission){
+savedBackupFolderHandle=null;
+alert("Folder की permission नहीं मिली।");
+return
+}
 
- if(!window.showDirectoryPicker){
+await saveBackupFolderHandle(savedBackupFolderHandle)
+}
 
-  /*
-    Fallback:
-    एक combined backup JSON download होगा।
-  */
+let count=0;
 
-  const blob=new Blob(
-   [JSON.stringify(bills,null,2)],
-   {type:"application/json"}
-  );
+for(const bill of bills){
+if(!bill)continue;
 
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
+const id=bill.id||Date.now()+"_"+count;
+const handle=await savedBackupFolderHandle.getFileHandle("bill_"+id+".json",{create:true});
+const writable=await handle.createWritable();
 
-  a.href=url;
-  a.download=
+await writable.write(JSON.stringify(bill,null,2));
+await writable.close();
 
-   "billing_data_backup_"+
-   new Date().toISOString().slice(0,10)+
-   ".json";
+count++
+}
 
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
-
-  alert(
-   "इस Android/WebView में Direct Folder Save उपलब्ध नहीं है।\n\n"+
-   "इसलिए पूरा backup एक JSON file में download किया गया है।"
-  );
-
-  return;
- }
-
- try{
-
-
-  if(!savedBackupFolderHandle){
-   savedBackupFolderHandle=
-   await getSavedBackupFolderHandle();
-  }
-
-  let permission=
-  await verifyFolderPermission(
-   savedBackupFolderHandle
-  );
-
-  if(!permission){
-
-   savedBackupFolderHandle=
-   await window.showDirectoryPicker({
-    mode:"readwrite"
-   });
-
-   permission=
-   await verifyFolderPermission(
-    savedBackupFolderHandle
-
-   );
-
-   if(!permission){
-    savedBackupFolderHandle=null;
-    alert("Folder की permission नहीं मिली।");
-    return;
-   }
-
-   await saveBackupFolderHandle(
-    savedBackupFolderHandle
-   );
-  }
-
-  let count=0;
-
-  for(const bill of bills){
-
-   if(!bill) continue;
-
-   const id=
-   bill.id||Date.now()+"_"+count;
-
-
-   const handle=
-   await savedBackupFolderHandle.getFileHandle(
-    "bill_"+id+".json",
-    {create:true}
-   );
-
-   const writable=
-   await handle.createWritable();
-
-   await writable.write(
-    JSON.stringify(bill,null,2)
-   );
-
-   await writable.close();
-
-   count++;
-  }
-
-  alert(
-
-   "✅ Backup successfully saved!\n\n"+
-   "📁 Folder: "+
-   savedBackupFolderHandle.name+
-   "\n\n"+
-   "💾 Bills saved: "+
-   count
-  );
-
- }catch(e){
-
-  console.error(e);
-
-  if(e.name==="AbortError") return;
-
-  savedBackupFolderHandle=null;
-
-  alert(
-   "❌ Folder में backup save नहीं हो पाया।\n\n"+
-   "दोबारा Save दबाकर folder चुनें।"
-  );
-
- }
+alert("✅ Backup successfully saved!\n\n📁 Folder: "+savedBackupFolderHandle.name+"\n\n💾 Bills saved: "+count)
+}catch(e){
+console.error(e);
+if(e.name==="AbortError")return;
+savedBackupFolderHandle=null;
+alert("❌ Folder में backup save नहीं हो पाया।\n\nदोबारा Save दबाकर folder चुनें।")
+}
 }
 
 async function loadFromDrive(){
+const input=document.getElementById("driveImportFile");
+const files=Array.from(input.files||[]);
 
- const input=
- document.getElementById("driveImportFile");
+if(!files.length)return;
 
- const files=Array.from(input.files||[]);
+let imported=[],jsonCount=0,failed=0;
 
- if(!files.length) return;
+for(const file of files){
+if(!file.name.toLowerCase().endsWith(".json"))continue;
+jsonCount++;
 
- let imported=[];
+try{
+const text=await file.text(),data=JSON.parse(text);
 
- let jsonCount=0;
- let failed=0;
+if(Array.isArray(data))
+data.forEach(b=>{
+if(b&&typeof b==="object")imported.push(b)
+});
+else if(data&&typeof data==="object")imported.push(data)
 
- for(const file of files){
+}catch(e){failed++}
+}
 
-  if(!file.name.toLowerCase().endsWith(".json"))
-   continue;
+if(!imported.length){
+input.value="";
+alert("❌ इस folder में कोई सही billing JSON backup नहीं मिली।");
+return
+}
 
-  jsonCount++;
+let existing=[];
 
-  try{
+try{
+existing=JSON.parse(localStorage.getItem("my_bills")||"[]")
+}catch(e){existing=[]}
 
-   const text=await file.text();
-   const data=JSON.parse(text);
+if(!Array.isArray(existing))existing=[];
 
-   if(Array.isArray(data)){
-    data.forEach(b=>{
-     if(b&&typeof b==="object")
-      imported.push(b);
-    });
-   }else if(data&&typeof data==="object"){
-    imported.push(data);
-   }
+const keys=new Set();
+existing.forEach(b=>keys.add(getBillUniqueKey(b)));
 
-  }catch(e){
+let added=0,duplicates=0;
 
-   failed++;
-  }
- }
+imported.forEach(b=>{
+const key=getBillUniqueKey(b);
 
- if(!imported.length){
+if(keys.has(key)){
+duplicates++;
+return
+}
 
-  input.value="";
+keys.add(key);
+existing.push(b);
+added++
+});
 
-  alert(
-   "❌ इस folder में कोई सही billing JSON backup नहीं मिली।"
-  );
+localStorage.setItem("my_bills",JSON.stringify(existing));
+input.value="";
+showHistory();
 
-  return;
- }
-
- let existing=[];
-
- try{
-  existing=
-  JSON.parse(
-
-   localStorage.getItem("my_bills")||"[]"
-  );
- }catch(e){
-  existing=[];
- }
-
- if(!Array.isArray(existing)) existing=[];
-
- const keys=new Set();
-
- existing.forEach(b=>{
-  keys.add(getBillUniqueKey(b));
- });
-
- let added=0;
- let duplicates=0;
-
- imported.forEach(b=>{
-
-  const key=getBillUniqueKey(b);
-
-  if(keys.has(key)){
-   duplicates++;
-   return;
-  }
-
-  keys.add(key);
-  existing.push(b);
-  added++;
- });
-
- localStorage.setItem(
-  "my_bills",
-  JSON.stringify(existing)
- );
-
- input.value="";
-
- showHistory();
-
- alert(
-  "✅ Backup Folder Load हो गया!\n\n"+
-
-  "📁 JSON files: "+jsonCount+"\n"+
-  "📦 नए bills: "+added+"\n"+
-  "♻️ Duplicate: "+duplicates+"\n"+
-  "❌ Failed: "+failed
- );
+alert("✅ Backup Folder Load हो गया!\n\n📁 JSON files: "+jsonCount+"\n📦 नए bills: "+added+"\n♻️ Duplicate: "+duplicates+"\n❌ Failed: "+failed)
 }
 
 function getBillUniqueKey(bill){
-
- if(
-  bill&&
-  bill.id!==undefined&&
-  bill.id!==null
- ){
-  return "id:"+bill.id;
- }
-
- return "data:"+
- JSON.stringify([
-  bill&&bill.customer,
-  bill&&bill.date,
-
-  bill&&bill.items,
-  bill&&bill.total
- ]);
+if(bill&&bill.id!==undefined&&bill.id!==null)return "id:"+bill.id;
+return "data:"+JSON.stringify([bill&&bill.customer,bill&&bill.date,bill&&bill.items,bill&&bill.total])
 }
-
-/* =========================
-   HISTORY
-========================= */
 
 function showHistory(){
-
- const sC=
- document.getElementById("sCust").value
- .toLowerCase().trim();
-
- const sI=
- document.getElementById("sItem").value
- .toLowerCase().trim();
-
- const area=document.getElementById("histArea")
-
-;
-
- const list=JSON.parse(
-  localStorage.getItem("my_bills")||"[]"
- );
-
- area.innerHTML="";
-
- const filtered=list.filter(b=>{
-
-  const customer=
-  String(b.customer||"").toLowerCase();
-
-  const itemMatch=
-  !sI||
-  (b.items||[]).some(i=>
-   String(i.name||"")
-   .toLowerCase()
-   .includes(sI)
-  );
-
-  return customer.includes(sC)&&itemMatch;
- });
-
- if(!filtered.length){
-
-  area.innerHTML=
-  `<p style="text-align:center;color:#64748b;padding:20px">
-   कोई रिकॉर्ड नहीं मिला।
-  </p>`;
-
-  return;
- }
-
- filtered.forEach(b=>{
-
-  let itemsHtml="";
-
-  (b.items||[]).forEach(item=>{
-
-   if(
-    sI&&
-    !String(item.name||"")
-    .toLowerCase()
-    .includes(sI)
-   ) return;
-
-   itemsHtml+=`
-   <div class="history-item">
-
-    <div class="history-item-name">
-     • ${escapeHtml(item.name||"")}
-    </div>
-
-    <div class="history-item-qty">
-     (${escapeHtml(item.qty||"1")})
-    </div>
-
-    <div class="history-item-price">
-     ₹${Number(item.price||0).toFixed(2)}
-    </div>
-
-
-   </div>`;
-  });
-
-  if(!itemsHtml) return;
-
-  area.innerHTML+=`
-  <div class="history-card">
-
-   <div class="history-card-header">
-    👤 ग्राहक: ${escapeHtml(b.customer||"")}
-   </div>
-
-   <div class="history-card-body">
-
-    <div class="history-date">
-     📅 दिनांक: ${escapeHtml(b.date||"")}
-    </div>
-
-    ${itemsHtml}
-
-   </div>
-  </div>`;
- });
-}
-
-/* =========================
-   KEYBOARD NEXT
-========================= */
-
-function setupMobileNext(){
-
- const customer=document.getElementById("custName");
-
- const names=
- Array.from(document.querySelectorAll(".i-name"));
-
- const qtys=
- Array.from(document.querySelectorAll(".i-
-
-qty"));
-
- const prices=
- Array.from(document.querySelectorAll(".i-price"));
-
- if(customer){
-
-  customer.addEventListener("keydown",e=>{
-
-   if(e.key==="Enter"){
-
-    e.preventDefault();
-
-    if(names[0]) names[0].focus();
-   }
-  });
- }
-
- names.forEach((el,i)=>{
-
-
-  el.addEventListener("keydown",e=>{
-
-   if(e.key==="Enter"){
-
-    e.preventDefault();
-
-    if(qtys[i]) qtys[i].focus();
-   }
-  });
-
-  qtys[i].addEventListener("keydown",e=>{
-
-   if(e.key==="Enter"){
-
-    e.preventDefault();
-
-    if(prices[i]) prices[i].focus();
-   }
-  });
-
-  prices[i].addEventListener("keydown",e=>{
-
-   if(e.key==="Enter"){
-
-    e.preventDefault();
-
-    if(names[i+1])
-     names[i+1].focus();
-    else
-     prices[i].blur();
-   }
-  });
- });
-}
-
-/* =========================
-   START
-========================= */
-
-document.addEventListener("DOMContentLoaded",function(){
-
-
- createRows();
-
- const today=new Date();
- const yyyy=today.getFullYear();
- const mm=String(today.getMonth()+1).padStart(2,"0");
- const dd=String(today.getDate()).padStart(2,"0");
-
- document.getElementById("billDate").value=
- `${yyyy}-${mm}-${dd}`;
-
- setupMobileNext();
-
+const sC=document.getElementById("sCust").value.toLowerCase().trim();
+const sI=document.getElementById("sItem").value.toLowerCase().trim();
+const area=document.getElementById("histArea");
+const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
+
+area.innerHTML="";
+
+const filtered=list.filter(b=>{
+const customer=String(b.customer||"").toLowerCase();
+const itemMatch=!sI||(b.items||[]).some(i=>String(i.name||"").toLowerCase().includes(sI));
+return customer.includes(sC)&&itemMatch
 });
 
-</script>
+if(!filtered.length){
+area.innerHTML=`<p style="text-align:center;color:#64748b;padding:20px">कोई रिकॉर्ड नहीं मिला।</p>`;
+return
+}
 
+filtered.forEach(b=>{
+let itemsHtml="";
+
+(b.items||[]).forEach(item=>{
+if(sI&&!String(item.name||"").toLowerCase().includes(sI))return;
+
+itemsHtml+=`<div class="history-item"><div class="history-item-name">• ${escapeHtml(item.name||"")}</div><div class="history-item-qty">(${escapeHtml(item.qty||"1")})</div><div class="history-item-price">₹${Number(item.price||0).toFixed(2)}</div></div>`
+});
+
+if(!itemsHtml)return;
+
+area.innerHTML+=`<div class="history-card"><div class="history-card-header"><span>👤 ग्राहक: ${escapeHtml(b.customer||"")}</span><button class="history-delete-btn" type="button" onclick="deleteHistoryBill(${JSON.stringify(b.id)})" title="बिल डिलीट करें">🗑️</button></div><div class="history-card-body"><div class="history-date">📅 दिनांक: ${escapeHtml(b.date||"")}</div>${itemsHtml}</div></div>`
+})
+}
+
+function deleteHistoryBill(id){
+if(id===undefined||id===null)return;
+
+if(!confirm("क्या आप यह बिल History से डिलीट करना चाहते हैं?"))return;
+
+let list=[];
+
+try{
+list=JSON.parse(localStorage.getItem("my_bills")||"[]")
+}catch(e){list=[]}
+
+if(!Array.isArray(list))list=[];
+
+const newList=list.filter(b=>String(b&&b.id)!==String(id));
+
+localStorage.setItem("my_bills",JSON.stringify(newList));
+showHistory()
+}
+
+window.deleteHistoryBill=deleteHistoryBill;
+
+function setupMobileNext(){
+const customer=document.getElementById("custName");
+const names=Array.from(document.querySelectorAll(".i-name"));
+const qtys=Array.from(document.querySelectorAll(".i-qty"));
+const prices=Array.from(document.querySelectorAll(".i-price"));
+
+if(customer)
+customer.addEventListener("keydown",e=>{
+if(e.key==="Enter"){
+e.preventDefault();
+if(names[0])names[0].focus()
+}
+});
+
+names.forEach((el,i)=>{
+el.addEventListener("keydown",e=>{
+if(e.key==="Enter"){
+e.preventDefault();
+if(qtys[i])qtys[i].focus()
+}
+});
+
+qtys[i].addEventListener("keydown",e=>{
+if(e.key==="Enter"){
+e.preventDefault();
+if(prices[i])prices[i].focus()
+}
+});
+
+prices[i].addEventListener("keydown",e=>{
+if(e.key==="Enter"){
+e.preventDefault();
+if(names[i+1])names[i+1].focus();
+else prices[i].blur()
+}
+})
+})
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+createRows();
+
+const today=new Date();
+const yyyy=today.getFullYear();
+const mm=String(today.getMonth()+1).padStart(2,"0");
+const dd=String(today.getDate()).padStart(2,"0");
+
+document.getElementById("billDate").value=`${yyyy}-${mm}-${dd}`;
+setupMobileNext()
+});
+</script>
 </body>
 </html>
