@@ -101,6 +101,9 @@ jobs:
                               pm.print(name, wv.createPrintDocumentAdapter(name),
                                   new PrintAttributes.Builder()
                                       .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                      .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
+                                      .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
+                                      .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                                       .build());
                           }
                       });
