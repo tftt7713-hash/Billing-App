@@ -244,16 +244,16 @@ status.innerText="माइक शुरू नहीं हो पाया।"
 function parseVoiceText(text){
 let cust="-",date=new Date().toLocaleDateString("hi-IN"),item="-",qty="-",price="0";
 
-let m=text.match(/(?:ग्राहक|कस्टमर|नाम)\s*(.*?)(?=\s*(?:तारीख|दिनांक|डेट|आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let m=text.match(/(?:ग्राहक|कस्टमर|नाम)\s*(.*?)(?=\s*(?:तारीख|दिनांक|डेट|आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
 if(m)cust=m[1].trim();
 
-let d=text.match(/(?:तारीख|दिनांक|डेट)\s*(.*?)(?=\s*(?:आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let d=text.match(/(?:तारीख|दिनांक|डेट)\s*(.*?)(?=\s*(?:आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
 if(d)date=d[1].trim();
 
-let i=text.match(/(?:आइटम|चीज़|सामान)\s*(.*?)(?=\s*(?:क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let i=text.match(/(?:आइटम|चीज़|सामान)\s*(.*?)(?=\s*(?:क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
 if(i)item=i[1].trim();
 
-let q=text.match(/(?:क्वांटिटी|मात्रा|वजन|नग)\s*(.*?)(?=\s*(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\b|$)/);
+let q=text.match(/(?:क्वांटिटी|मात्रा|वजन|नग)\s*(.*?)(?=\s*(?:प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
 if(q)qty=q[1].trim();
 
 let p=text.match(/(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\s*(\d+(?:\.\d+)?)/);
@@ -771,32 +771,44 @@ status.innerText="माइक बंद है।";
 return
 }
 
-try{
-const av=await SR.available();
-if(!av||!av.available){
-status.innerText="इस फोन में Speech Recognition उपलब्ध नहीं है। Google app / Speech Services चालू करें।";
-return
-}
+const errText=e=>String((e&&(e.message||e.errorMessage||e.code))||e||"unknown");
 
+try{
 let perm=await SR.checkPermissions();
 if(perm.speechRecognition!=="granted")perm=await SR.requestPermissions();
 if(perm.speechRecognition!=="granted"){
 status.innerText="🎤 माइक की अनुमति नहीं मिली। फोन की App Settings में Microphone अनुमति चालू करें।";
 return
 }
+}catch(e){
+status.innerText="अनुमति में दिक्कत: "+errText(e);
+return
+}
 
 btn.classList.add("listening");
 status.innerText="सुन रहा हूँ... बोलिए भाई!";
 
-const res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:false});
+let res=null,err1=null,err2=null;
+
+try{
+res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:false})
+}catch(e){err1=e}
+
+if(!res||!res.matches||!res.matches.length){
+status.innerText="Google की आवाज़ वाली विंडो खुल रही है... बोलिए";
+try{
+res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:true,prompt:"बोलिए..."})
+}catch(e){err2=e}
+}
 
 btn.classList.remove("listening");
-if(res&&res.matches&&res.matches.length)parseVoiceText(String(res.matches[0]).toLowerCase());
-else status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
-}catch(e){
-btn.classList.remove("listening");
-status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
+
+if(res&&res.matches&&res.matches.length){
+parseVoiceText(String(res.matches[0]).toLowerCase());
+return
 }
+
+status.innerText="आवाज़ नहीं पकड़ी। ["+(err1?errText(err1):"कोई आवाज़ नहीं")+" | "+(err2?errText(err2):"कोई आवाज़ नहीं")+"] दोबारा दबाएँ।"
 }
 
 /* ===== PRINT: ऐप में फोन का प्रिंट स्क्रीन, PC में Chrome का ===== */
