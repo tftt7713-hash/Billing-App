@@ -756,7 +756,7 @@ set(Math.max(10,Math.round(10+T-h0)));
 document.getElementById("pdfPreviewBtn").addEventListener("click",openInvoicePreview);
 
 /* ===== ANDROID APP VOICE (Capacitor plugin) ===== */
-async function startVoiceRecognition(){
+async function startPluginVoiceRecognition(){
 const status=document.getElementById("voiceStatus");
 const btn=document.getElementById("startVoiceBtn");
 const isNative=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform();
@@ -809,6 +809,25 @@ return
 }
 
 status.innerText="आवाज़ नहीं पकड़ी। ["+(err1?errText(err1):"कोई आवाज़ नहीं")+" | "+(err2?errText(err2):"कोई आवाज़ नहीं")+"] दोबारा दबाएँ।"
+}
+
+/* ===== ANDROID APP VOICE: Google की बोलने वाली विंडो (सीधा Android bridge) ===== */
+window.onSpeechResult=function(t){
+document.getElementById("startVoiceBtn").classList.remove("listening");
+parseVoiceText(String(t).toLowerCase())
+};
+window.onSpeechError=function(m){
+document.getElementById("startVoiceBtn").classList.remove("listening");
+document.getElementById("voiceStatus").innerText="आवाज़ नहीं पकड़ी ("+m+")। दोबारा दबाएँ।"
+};
+async function startVoiceRecognition(){
+if(window.AndroidSpeech&&window.AndroidSpeech.listen){
+document.getElementById("startVoiceBtn").classList.add("listening");
+document.getElementById("voiceStatus").innerText="Google की बोलने वाली विंडो खुल रही है... बोलिए";
+try{window.AndroidSpeech.listen("hi-IN")}catch(e){window.onSpeechError(String(e))}
+return
+}
+return startPluginVoiceRecognition()
 }
 
 /* ===== PRINT: ऐप में फोन का प्रिंट स्क्रीन, PC में Chrome का ===== */
