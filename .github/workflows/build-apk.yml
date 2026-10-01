@@ -69,16 +69,19 @@ jobs:
           import android.print.PrintAttributes;
           import android.print.PrintManager;
           import android.provider.DocumentsContract;
+          import android.speech.RecognizerIntent;
           import android.webkit.JavascriptInterface;
           import android.webkit.WebView;
           import com.getcapacitor.BridgeActivity;
           import java.io.OutputStream;
+          import java.util.ArrayList;
           import java.util.HashMap;
           import org.json.JSONArray;
           import org.json.JSONObject;
 
           public class MainActivity extends BridgeActivity {
               private static final int REQ_PICK_FOLDER = 4711;
+              private static final int REQ_SPEECH = 4712;
               private static final String PREFS = "backup_prefs";
               private static final String KEY_TREE = "tree_uri";
 
@@ -105,6 +108,26 @@ jobs:
                                       .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
                                       .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                                       .build());
+                          }
+                      });
+                  }
+              }
+
+              public class SpeechBridge {
+                  @JavascriptInterface
+                  public void listen(final String lang) {
+                      runOnUiThread(new Runnable() {
+                          public void run() {
+                              try {
+                                  Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                                  i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                                  i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
+                                  i.putExtra(RecognizerIntent.EXTRA_PROMPT, "बोलिए...");
+                                  i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                                  MainActivity.this.startActivityForResult(i, REQ_SPEECH);
+                              } catch (Exception e) {
+                                  js("window.onSpeechError&&window.onSpeechError(" + JSONObject.quote(String.valueOf(e)) + ")");
+                              }
                           }
                       });
                   }
@@ -187,6 +210,17 @@ jobs:
               @Override
               protected void onActivityResult(int requestCode, int resultCode, Intent data) {
                   super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == REQ_SPEECH) {
+                      if (resultCode == RESULT_OK && data != null) {
+                          ArrayList<String> r = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                          if (r != null && r.size() > 0) {
+                              js("window.onSpeechResult&&window.onSpeechResult(" + JSONObject.quote(r.get(0)) + ")");
+                              return;
+                          }
+                      }
+                      js("window.onSpeechError&&window.onSpeechError(" + JSONObject.quote("no result, code=" + resultCode) + ")");
+                      return;
+                  }
                   if (requestCode == REQ_PICK_FOLDER) {
                       if (resultCode == RESULT_OK && data != null && data.getData() != null) {
                           Uri tree = data.getData();
@@ -207,6 +241,7 @@ jobs:
                   super.onCreate(savedInstanceState);
                   getBridge().getWebView().addJavascriptInterface(new PrintBridge(), "AndroidPrint");
                   getBridge().getWebView().addJavascriptInterface(new BackupBridge(), "AndroidBackup");
+                  getBridge().getWebView().addJavascriptInterface(new SpeechBridge(), "AndroidSpeech");
               }
           }
           EOF
