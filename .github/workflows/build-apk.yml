@@ -389,7 +389,7 @@ jobs:
               }
 
               @Override
-              protected void onDestroy() {
+              public void onDestroy() {
                   speechActive = false;
                   uiHandler.removeCallbacksAndMessages(null);
                   if (sr != null) {
