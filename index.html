@@ -74,12 +74,27 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 </div></div>
 
 <div id="voice-pg" class="page">
-<h2 style="margin-bottom:10px">🎤 पुराना डेटा बोलकर भरें</h2>
-<p style="font-size:.88rem;color:#64748b;margin-bottom:15px">उदाहरण: "ग्राहक सुरेश भाई तारीख 15 मार्च 2023 आइटम धूप क्वांटिटी 5 पैकेट प्राइस 450"</p>
-<button class="voice-btn" id="startVoiceBtn" style="background:#dc2626;color:white;border:0;width:80px;height:80px;border-radius:50%;font-size:2rem;cursor:pointer;display:block;margin:20px auto" onclick="startVoiceRecognition()">🎙️</button>
-<div id="voiceStatus" style="text-align:center;font-weight:bold;color:#475569;margin-bottom:15px">माइक बंद है। चालू करने के लिए दबाएँ।</div>
-<div style="background:#f1f5f9;padding:15px;border-radius:6px;margin-bottom:15px;border:1px solid #cbd5e1;line-height:1.8"><strong>📝 पहचाना गया डेटा:</strong><br>• ग्राहक: <span id="v-cust" style="color:#2563eb;font-weight:bold">-</span><br>• तारीख: <span id="v-date" style="color:#2563eb;font-weight:bold">-</span><br>• आइटम: <span id="v-item" style="color:#2563eb;font-weight:bold">-</span><br>• क्वांटिटी: <span id="v-qty" style="color:#2563eb;font-weight:bold">-</span><br>• प्राइस: <span id="v-price" style="color:#2563eb;font-weight:bold">-</span></div>
-<button class="btn-save" style="background:#16a34a;color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;width:100%;cursor:pointer" onclick="saveVoiceBill()">💾 इस बिल को हिस्ट्री में लोड करें</button>
+<h2 style="margin-bottom:10px">🎤 बोलकर बिल भरें</h2>
+<p style="font-size:.85rem;color:#64748b;margin-bottom:10px">उदाहरण: "ग्राहक सुरेश भाई तारीख 15 मार्च 2023 आइटम धूप क्वांटिटी 5 kg प्राइस 450" — फिर अगला आइटम बोलते जाइए। माइक तब तक चालू रहेगा जब तक आप खुद बंद न करें।</p>
+<button class="voice-btn" id="startVoiceBtn" style="background:#dc2626;color:white;border:0;width:80px;height:80px;border-radius:50%;font-size:2rem;cursor:pointer;display:block;margin:10px auto" onclick="toggleVoice()">🎙️</button>
+<div id="voiceStatus" style="text-align:center;font-weight:bold;color:#475569;margin-bottom:10px">माइक बंद है। चालू करने के लिए दबाएँ।</div>
+<div id="voiceLive" style="min-height:44px;background:#f1f5f9;border:1px dashed #94a3b8;border-radius:6px;padding:8px;margin-bottom:15px;color:#334155;font-size:.95rem;line-height:1.5"></div>
+
+<div oninput="syncVBase()">
+<div class="page-header"><h2>नया बिल जनरेट</h2><input type="date" id="vBillDate" style="padding:8px;border:2px solid #94a3b8;border-radius:6px"></div>
+<div class="form-group"><label>कस्टमर का नाम:</label><input type="text" id="vCustName" placeholder="जैसे: कल्पेश भाई"></div>
+<div class="invoice-box" style="border:2px solid var(--bd);border-radius:6px;margin-bottom:15px">
+<div style="display:flex;min-width:600px;border-bottom:1px solid var(--bd);font-weight:bold;background:#e2e8f0">
+<div style="width:40px;text-align:center;padding:8px">No.</div><div style="flex:2;padding:8px">आइटम का नाम</div><div style="flex:1.2;padding:8px">क्वांटिटी</div><div style="flex:1;padding:8px">प्राइस (₹)</div>
+</div><div id="v-rows-container"></div></div>
+<div style="background:#dcfce7;color:#14532d;padding:15px;border-radius:6px;display:flex;justify-content:space-between;font-size:1.2rem;font-weight:bold;margin-bottom:15px;border:2px solid #bbf7d0">
+<span>कुल अमाउंट (Total):</span><span>₹ <span id="vTotalTxt">0.00</span></span>
+</div>
+</div>
+<div style="display:flex;gap:10px;margin-bottom:15px">
+<button class="btn-save" style="background:var(--p-color);color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:2" onclick="saveVoiceBill()">💾 बिल सेव करें</button>
+<button class="btn-save" style="background:#64748b;color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:1" onclick="clearVoice()">🗑️ साफ़ करें</button>
+</div>
 </div>
 
 <div id="hist-pg" class="page">
@@ -176,133 +191,248 @@ document.getElementById("totalTxt").innerText="0.00"
 
 function escapeHtml(value){return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
 
-/* ========================= VOICE ========================= */
-let recognition=null;
-
-async function startWebVoiceRecognition(){
-const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(!SpeechRecognition){
-alert("आपके browser में Voice Recognition उपलब्ध नहीं है।");
-return
-}
-
-if(recognition){
-try{recognition.stop()}catch(e){}
-recognition=null;
-document.getElementById("startVoiceBtn").classList.remove("listening");
-document.getElementById("voiceStatus").innerText="माइक बंद है।";
-return
-}
-
-const status=document.getElementById("voiceStatus");
-
-try{
-if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
-status.innerText="🎤 माइक की अनुमति माँगी जा रही है...";
-const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-stream.getTracks().forEach(track=>track.stop());
-}
-}catch(e){
-document.getElementById("startVoiceBtn").classList.remove("listening");
-if(e&&e.name==="NotAllowedError") status.innerText="🎤 माइक की अनुमति नहीं मिली। फोन की App Settings में Microphone अनुमति चालू करें।";
-else status.innerText="🎤 माइक शुरू नहीं हो पाया। Microphone permission जाँचें।";
-return;
-}
-
-recognition=new SpeechRecognition();
-recognition.lang="hi-IN";
-recognition.interimResults=false;
-recognition.continuous=false;
-document.getElementById("startVoiceBtn").classList.add("listening");
-status.innerText="सुन रहा हूँ... बोलिए भाई!";
-
-recognition.onresult=function(event){
-const text=event.results[event.results.length-1][0].transcript.toLowerCase();
-document.getElementById("startVoiceBtn").classList.remove("listening");
-parseVoiceText(text)
+/* ========================= VOICE (लगातार चालू माइक, हिंदी + English) ========================= */
+/*PURE-START*/
+const V_KEYS={
+cust:["ग्राहक","कस्टमर","नाम","customer","name"],
+date:["तारीख","दिनांक","डेट","date"],
+item:["आइटम","आईटम","सामान","चीज़","चीज","item","items"],
+qty:["क्वांटिटी","क्वान्टिटी","क्वांटिटि","मात्रा","वजन","वज़न","quantity","qty","weight"],
+price:["प्राइस","प्राईस","कीमत","दाम","रेट","टोटल","price","rate","amount","total"]
 };
+const KEYMAP={};Object.keys(V_KEYS).forEach(k=>V_KEYS[k].forEach(w=>{KEYMAP[w]=k}));
+const RUPEE={"रुपए":1,"रुपये":1,"रुपया":1,"रुपयों":1,"पैसे":1,"rupees":1,"rupee":1,"rs":1};
+const V_MONTHS={"जनवरी":1,"फरवरी":2,"फ़रवरी":2,"मार्च":3,"अप्रैल":4,"मई":5,"जून":6,"जुलाई":7,"अगस्त":8,"सितंबर":9,"सितम्बर":9,"अक्टूबर":10,"अक्तूबर":10,"नवंबर":11,"नवम्बर":11,"दिसंबर":12,"दिसम्बर":12,
+"january":1,"february":2,"march":3,"april":4,"may":5,"june":6,"july":7,"august":8,"september":9,"october":10,"november":11,"december":12,
+"jan":1,"feb":2,"mar":3,"apr":4,"jun":6,"jul":7,"aug":8,"sep":9,"sept":9,"oct":10,"nov":11,"dec":12};
 
-recognition.onerror=function(event){
-document.getElementById("startVoiceBtn").classList.remove("listening");
-if(event&&event.error==="not-allowed")status.innerText="🎤 माइक की अनुमति नहीं मिली। App Settings में Microphone अनुमति चालू करें।";
-else if(event&&event.error==="audio-capture")status.innerText="🎤 माइक उपलब्ध नहीं है। Microphone permission जाँचें।";
-else status.innerText="आवाज साफ़ नहीं आई, दोबारा दबाएँ।"
-};
+function normDigits(s){return String(s).replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d))}
 
-recognition.onend=function(){
-document.getElementById("startVoiceBtn").classList.remove("listening")
-};
-
-try{
-recognition.start()
-}catch(e){
-document.getElementById("startVoiceBtn").classList.remove("listening");
-status.innerText="माइक शुरू नहीं हो पाया।"
+function normQty(v){
+return String(v)
+.replace(/(\d)\s*(?:के\s?जी|केजी|किलोग्राम|किग्रा|किलो|kilograms?|kilos?|kgs?|k\.g\.?|k)(?=\s|$)/gi,"$1 kg")
+.replace(/(\d)\s*(?:ग्राम|grams?|gm|g)(?=\s|$)/gi,"$1 g")
+.replace(/(\d)\s*(?:लीटर|litres?|liters?|ltr|l)(?=\s|$)/gi,"$1 L")
+.replace(/(\d)\s*(?:पैकेट|packets?)(?=\s|$)/gi,"$1 packet")
+.replace(/(\d)\s*(?:पीस|पिस|pieces?|pcs)(?=\s|$)/gi,"$1 pcs")
+.replace(/(\d)\s*(?:डज़न|दर्जन|dozen)(?=\s|$)/gi,"$1 dozen")
+.replace(/(\d)\s*(?:बॉक्स|boxes|box)(?=\s|$)/gi,"$1 box")
+.replace(/\s+/g," ").trim()
 }
+
+function parseSpokenDate(t){
+t=normDigits(String(t).toLowerCase()).replace(/,/g," ").trim();
+let d,mo,y,m=t.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/);
+if(m){d=+m[1];mo=+m[2];y=+m[3]}
+else{
+m=t.match(/(\d{1,2})\s*(?:वीं|वी|st|nd|rd|th)?\s+([^\s\d]+)(?:\s+(\d{2,4}))?/);
+if(m&&V_MONTHS[m[2]]){d=+m[1];mo=V_MONTHS[m[2]];y=m[3]?+m[3]:new Date().getFullYear()}
+else return null
+}
+if(y<100)y+=2000;
+if(!(d>=1&&d<=31&&mo>=1&&mo<=12&&y>=2000&&y<=2100))return null;
+return y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0")
 }
 
-function parseVoiceText(text){
-let cust="-",date=new Date().toLocaleDateString("hi-IN"),item="-",qty="-",price="0";
+function vRow(S,i){while(S.rows.length<=i)S.rows.push({name:"",qty:"",price:""});return S.rows[i]}
 
-let m=text.match(/(?:ग्राहक|कस्टमर|नाम)\s*(.*?)(?=\s*(?:तारीख|दिनांक|डेट|आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
-if(m)cust=m[1].trim();
+function startVoiceField(S,k){
+const r=vRow(S,S.ri);
+if((k==="item"&&r.name)||(k==="qty"&&r.qty)||(k==="price"&&r.price!==""))S.ri++
+}
 
-let d=text.match(/(?:तारीख|दिनांक|डेट)\s*(.*?)(?=\s*(?:आइटम|चीज़|सामान|क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
-if(d)date=d[1].trim();
+function voiceFieldEmpty(S,f){
+if(f==="cust")return !S.cust;
+if(f==="date")return !S.dateSpoken;
+const r=vRow(S,S.ri);
+if(f==="item")return !r.name;
+if(f==="qty")return !r.qty;
+return r.price===""
+}
 
-let i=text.match(/(?:आइटम|चीज़|सामान)\s*(.*?)(?=\s*(?:क्वांटिटी|मात्रा|वजन|नग|प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
-if(i)item=i[1].trim();
+function putVoiceField(S,f,words){
+let val=words.join(" ").trim();
+if(f==="cust"||f==="item")val=val.replace(/^(?:(?:का|की|के|है|ये|is|the)\s+)+/,"");
+if(!val)return;
+if(f==="cust"||f==="item")val=val.replace(/(^|\s)([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+if(f==="cust"){S.cust=val;return}
+if(f==="date"){const dt=parseSpokenDate(val);if(dt){S.date=dt;S.dateSpoken=true}return}
+const r=vRow(S,S.ri);
+if(f==="item")r.name=val;
+else if(f==="qty")r.qty=normQty(val);
+else if(f==="price"){const m=val.match(/\d+(?:\.\d+)?/);if(m)r.price=m[0]}
+}
 
-let q=text.match(/(?:क्वांटिटी|मात्रा|वजन|नग)\s*(.*?)(?=\s*(?:प्राइस|पैसे|रुपए|कीमत|टोटल)|$)/);
-if(q)qty=q[1].trim();
+function applyVoiceChunk(S,text){
+const toks=normDigits(String(text).toLowerCase()).replace(/[,।|]/g," ").split(/\s+/)
+.map(t=>t.replace(/^[.:;!?"'()\-]+|[.:;!?"'()\-]+$/g,"")).filter(Boolean);
+let buf=[],f=S.field,lead=true;
+const flush=()=>{if(f&&buf.length)putVoiceField(S,f,buf);buf=[]};
+for(let i=0;i<toks.length;i++){
+const t=toks[i],k=KEYMAP[t];
+if(k){flush();startVoiceField(S,k);f=k;lead=false;continue}
+if(RUPEE[t]){
+const last=buf[buf.length-1];
+if(last&&/^\d+(\.\d+)?$/.test(last)){buf.pop();flush();startVoiceField(S,"price");putVoiceField(S,"price",[last]);f="price";buf=[]}
+else if(toks[i+1]&&/^\d/.test(toks[i+1])){flush();startVoiceField(S,"price");f="price"}
+lead=false;continue
+}
+if(lead){if(!f||!voiceFieldEmpty(S,f))continue}
+buf.push(t)
+}
+flush();S.field=f
+}
+/*PURE-END*/
 
-let p=text.match(/(?:प्राइस|पैसे|रुपए|कीमत|टोटल)\s*(\d+(?:\.\d+)?)/);
-if(p)price=p[1];
+let voiceOn=false,vLog="",vWeb=null,vBase=null;
+const todayISO=()=>{const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")};
+const freshVState=()=>({cust:"",date:todayISO(),dateSpoken:false,rows:[],field:null,ri:0});
 
-document.getElementById("v-cust").innerText=cust;
-document.getElementById("v-date").innerText=date;
-document.getElementById("v-item").innerText=item;
-document.getElementById("v-qty").innerText=qty;
-document.getElementById("v-price").innerText="₹"+price;
-document.getElementById("voiceStatus").innerText="पहचान लिया!"
+function buildVRows(n){
+const box=document.getElementById("v-rows-container");
+if(box.children.length===n)return;
+let h="";
+for(let i=1;i<=n;i++){
+h+=`<div class="v-row" style="display:flex;min-width:600px;border-bottom:1px solid var(--bd);min-height:60px"><div style="width:40px;text-align:center;padding:8px;background:#f1f5f9">${i}</div><div style="flex:2;padding:4px"><input class="vi-name" type="text" style="width:100%;padding:8px" placeholder="आइटम का नाम"></div><div style="flex:1.2;padding:4px"><input class="vi-qty" type="text" style="width:100%;padding:8px" placeholder="जैसे: 5 kg"></div><div style="flex:1;padding:4px"><input class="vi-price" type="number" step="0.01" style="width:100%;padding:8px" placeholder="0"></div></div>`
+}
+box.innerHTML=h
+}
+
+function calcVTotal(){
+let total=0;
+document.querySelectorAll(".v-row").forEach(row=>{const p=parseFloat(row.querySelector(".vi-price").value);if(!isNaN(p))total+=p});
+document.getElementById("vTotalTxt").innerText=total.toFixed(2)
+}
+
+function renderVoiceBill(S){
+buildVRows(Math.max(5,S.rows.length+1));
+document.getElementById("vCustName").value=S.cust||"";
+if(S.date)document.getElementById("vBillDate").value=S.date;
+document.querySelectorAll(".v-row").forEach((row,i)=>{
+const d=S.rows[i]||{};
+row.querySelector(".vi-name").value=d.name||"";
+row.querySelector(".vi-qty").value=d.qty||"";
+row.querySelector(".vi-price").value=d.price===undefined?"":d.price
+});
+calcVTotal()
+}
+
+function syncVBase(){
+const rows=[];
+document.querySelectorAll(".v-row").forEach(row=>{
+rows.push({name:row.querySelector(".vi-name").value.trim(),qty:row.querySelector(".vi-qty").value.trim(),price:row.querySelector(".vi-price").value.trim()})
+});
+while(rows.length&&!rows[rows.length-1].name&&!rows[rows.length-1].qty&&rows[rows.length-1].price==="")rows.pop();
+vBase.cust=document.getElementById("vCustName").value.trim();
+vBase.date=document.getElementById("vBillDate").value||vBase.date;
+vBase.rows=rows;
+if(vBase.ri>rows.length)vBase.ri=rows.length;
+calcVTotal()
+}
+
+function showVoiceLive(partial){
+const box=document.getElementById("voiceLive");
+box.textContent="";
+const a=document.createElement("span");a.textContent=vLog.slice(-220);
+const b=document.createElement("span");b.style.color="#94a3b8";b.textContent=(vLog&&partial?" ":"")+(partial||"");
+box.appendChild(a);box.appendChild(b)
+}
+
+function commitVoice(t){
+if(!String(t||"").trim())return;
+vLog+=(vLog?" ":"")+String(t).trim();
+applyVoiceChunk(vBase,t);
+renderVoiceBill(vBase);
+showVoiceLive("")
+}
+
+function previewVoice(t){
+showVoiceLive(t);
+if(!String(t||"").trim()){renderVoiceBill(vBase);return}
+const c=JSON.parse(JSON.stringify(vBase));
+applyVoiceChunk(c,t);
+renderVoiceBill(c)
+}
+
+function clearVoice(){
+vBase=freshVState();vLog="";
+renderVoiceBill(vBase);showVoiceLive("")
 }
 
 function saveVoiceBill(){
-const c=document.getElementById("v-cust").innerText;
-const d=document.getElementById("v-date").innerText;
-const i=document.getElementById("v-item").innerText;
-const q=document.getElementById("v-qty").innerText;
-const p=parseFloat(document.getElementById("v-price").innerText.replace("₹",""));
+syncVBase();
+const name=vBase.cust,rawDate=document.getElementById("vBillDate").value;
+if(!name){alert("कृपया कस्टमर का नाम बोलें या लिखें!");return}
+if(!rawDate){alert("कृपया तारीख चुनें!");return}
+const items=[];let total=0;
+vBase.rows.forEach(r=>{
+const rate=parseFloat(r.price);
+if(r.name&&!isNaN(rate)){items.push({name:r.name,qty:r.qty,price:rate,amount:rate});total+=rate}
+});
+if(!items.length){alert("कृपया कम से कम 1 आइटम (नाम + प्राइस) भरें!");return}
+const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
+list.push({id:Date.now(),customer:name,date:new Date(rawDate+"T00:00:00").toLocaleDateString("hi-IN"),rawDate:rawDate,items:items,total:total});
+localStorage.setItem("my_bills",JSON.stringify(list));
+alert("✅ बिल सफलतापूर्वक सेव हो गया है!");
+clearVoice()
+}
 
-if(c==="-"||i==="-"||isNaN(p)){
-alert("डेटा अधूरा है! कृपया दोबारा बोलें।");
+function setVoiceUI(on,msg){
+document.getElementById("startVoiceBtn").classList.toggle("listening",on);
+document.getElementById("voiceStatus").innerText=msg||(on?"🔴 सुन रहा हूँ... बोलते रहिए। बंद करने के लिए माइक फिर दबाएँ।":"माइक बंद है। चालू करने के लिए दबाएँ।")
+}
+
+function startWebContinuous(){
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){voiceOn=false;setVoiceUI(false,"इस browser में Voice उपलब्ध नहीं है।");return}
+const r=new SR();vWeb=r;
+r.lang="hi-IN";r.continuous=true;r.interimResults=true;
+r.onresult=e=>{
+let interim="";
+for(let i=e.resultIndex;i<e.results.length;i++){
+const res=e.results[i];
+if(res.isFinal)commitVoice(res[0].transcript);else interim+=res[0].transcript
+}
+previewVoice(interim)
+};
+r.onerror=e=>{
+if(e&&(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture")){
+voiceOn=false;vWeb=null;setVoiceUI(false,"🎤 माइक की अनुमति नहीं मिली। Microphone permission चालू करें।")
+}
+};
+r.onend=()=>{if(voiceOn&&vWeb===r){try{r.start()}catch(e){}}};
+try{r.start()}catch(e){voiceOn=false;vWeb=null;setVoiceUI(false,"माइक शुरू नहीं हो पाया।")}
+}
+
+function startVoice(){
+voiceOn=true;setVoiceUI(true);
+if(window.AndroidSpeech&&window.AndroidSpeech.startContinuous){
+try{window.AndroidSpeech.startContinuous("hi-IN")}catch(e){window.onVoiceError(String(e),true)}
 return
 }
-
-const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
-
-list.push({
-id:Date.now(),
-customer:c,
-date:d,
-items:[{
-name:i,
-qty:q,
-price:p,
-amount:p
-}],
-total:p
-});
-
-localStorage.setItem("my_bills",JSON.stringify(list));
-alert("पुराना बिल सफलतापूर्वक History में लोड हो गया!");
-
-["v-cust","v-date","v-item","v-qty","v-price"].forEach(id=>{
-document.getElementById(id).innerText="-"
-});
-
-document.getElementById("voiceStatus").innerText="माइक बंद है। अगला बिल बोलें।"
+startWebContinuous()
 }
+
+function stopVoice(){
+voiceOn=false;setVoiceUI(false);
+try{if(window.AndroidSpeech&&window.AndroidSpeech.stopContinuous)window.AndroidSpeech.stopContinuous()}catch(e){}
+if(vWeb){const r=vWeb;vWeb=null;try{r.onend=null;r.stop()}catch(e){}}
+showVoiceLive("")
+}
+
+function toggleVoice(){voiceOn?stopVoice():startVoice()}
+
+window.onVoicePartial=function(t){if(voiceOn)previewVoice(t)};
+window.onVoiceFinal=function(t){commitVoice(t)};
+window.onVoiceError=function(m,fatal){
+if(fatal){voiceOn=false;setVoiceUI(false,"🎤 माइक बंद हो गया ("+m+")। दोबारा दबाएँ।")}
+};
+
+const _switchPageOrig=switchPage;
+window.switchPage=function(id,btn){if(id!=="voice-pg"&&voiceOn)stopVoice();return _switchPageOrig(id,btn)};
+
+vBase=freshVState();
+renderVoiceBill(vBase);
 
 /* ========================= FOLDER BACKUP ========================= */
 let savedBackupFolderHandle=null;
@@ -754,81 +884,6 @@ const h0=inv.getBoundingClientRect().height;
 set(Math.max(10,Math.round(10+T-h0)));
 }
 document.getElementById("pdfPreviewBtn").addEventListener("click",openInvoicePreview);
-
-/* ===== ANDROID APP VOICE (Capacitor plugin) ===== */
-async function startPluginVoiceRecognition(){
-const status=document.getElementById("voiceStatus");
-const btn=document.getElementById("startVoiceBtn");
-const isNative=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform();
-const SR=isNative&&Capacitor.Plugins?Capacitor.Plugins.SpeechRecognition:null;
-
-if(!SR){return startWebVoiceRecognition()}
-
-if(btn.classList.contains("listening")){
-try{await SR.stop()}catch(e){}
-btn.classList.remove("listening");
-status.innerText="माइक बंद है।";
-return
-}
-
-const errText=e=>String((e&&(e.message||e.errorMessage||e.code))||e||"unknown");
-
-try{
-let perm=await SR.checkPermissions();
-if(perm.speechRecognition!=="granted")perm=await SR.requestPermissions();
-if(perm.speechRecognition!=="granted"){
-status.innerText="🎤 माइक की अनुमति नहीं मिली। फोन की App Settings में Microphone अनुमति चालू करें।";
-return
-}
-}catch(e){
-status.innerText="अनुमति में दिक्कत: "+errText(e);
-return
-}
-
-btn.classList.add("listening");
-status.innerText="सुन रहा हूँ... बोलिए भाई!";
-
-let res=null,err1=null,err2=null;
-
-try{
-res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:false})
-}catch(e){err1=e}
-
-if(!res||!res.matches||!res.matches.length){
-status.innerText="Google की आवाज़ वाली विंडो खुल रही है... बोलिए";
-try{
-res=await SR.start({language:"hi-IN",maxResults:1,partialResults:false,popup:true,prompt:"बोलिए..."})
-}catch(e){err2=e}
-}
-
-btn.classList.remove("listening");
-
-if(res&&res.matches&&res.matches.length){
-parseVoiceText(String(res.matches[0]).toLowerCase());
-return
-}
-
-status.innerText="आवाज़ नहीं पकड़ी। ["+(err1?errText(err1):"कोई आवाज़ नहीं")+" | "+(err2?errText(err2):"कोई आवाज़ नहीं")+"] दोबारा दबाएँ।"
-}
-
-/* ===== ANDROID APP VOICE: Google की बोलने वाली विंडो (सीधा Android bridge) ===== */
-window.onSpeechResult=function(t){
-document.getElementById("startVoiceBtn").classList.remove("listening");
-parseVoiceText(String(t).toLowerCase())
-};
-window.onSpeechError=function(m){
-document.getElementById("startVoiceBtn").classList.remove("listening");
-document.getElementById("voiceStatus").innerText="आवाज़ नहीं पकड़ी ("+m+")। दोबारा दबाएँ।"
-};
-async function startVoiceRecognition(){
-if(window.AndroidSpeech&&window.AndroidSpeech.listen){
-document.getElementById("startVoiceBtn").classList.add("listening");
-document.getElementById("voiceStatus").innerText="Google की बोलने वाली विंडो खुल रही है... बोलिए";
-try{window.AndroidSpeech.listen("hi-IN")}catch(e){window.onSpeechError(String(e))}
-return
-}
-return startPluginVoiceRecognition()
-}
 
 /* ===== PRINT: ऐप में फोन का प्रिंट स्क्रीन, PC में Chrome का ===== */
 (function(){
