@@ -36,28 +36,56 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 .voice-btn.listening{animation:voicePulse 1s infinite}@keyframes voicePulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
 
-#biometricLock{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(145deg,#0f172a,#1e3a8a);color:#fff;text-align:center}
+/* Minimal biometric screen: plain background and one round fingerprint control only. */
+#biometricLock{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:#fff;padding:0}
 #biometricLock.hidden{display:none}
-.biometric-lock-card{width:100%;max-width:380px;padding:28px 22px;border:1px solid rgba(255,255,255,.22);border-radius:20px;background:rgba(15,23,42,.82);box-shadow:0 18px 50px rgba(0,0,0,.3)}
-.biometric-lock-icon{font-size:4rem;margin-bottom:14px}
-.biometric-lock-card h2{font-size:1.45rem;margin-bottom:10px}
-.biometric-lock-card p{line-height:1.55;color:#dbeafe;margin-bottom:16px}
-#biometricLockStatus{min-height:44px;font-size:.95rem;color:#fde68a;margin:12px 0}
-#biometricUnlockBtn{width:100%;padding:14px;border:0;border-radius:10px;background:#22c55e;color:#052e16;font-weight:bold;font-size:1rem;cursor:pointer}
-#biometricUnlockBtn:disabled{opacity:.65}
+#biometricUnlockBtn{display:flex;align-items:center;justify-content:center;width:104px;height:104px;padding:0;border:2px solid #111827;border-radius:50%;background:#fff;color:#111827;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#biometricUnlockBtn:active{transform:scale(.96)}
+#biometricUnlockBtn:disabled{opacity:.7}
+#biometricUnlockBtn svg{display:block;width:56px;height:56px}
+
+
+/* Backup PIN panel appears only after a long-press on the fingerprint icon. */
+#pinLockPanel{position:fixed;inset:0;z-index:20001;display:none;align-items:center;justify-content:center;background:#fff;padding:24px}
+#pinLockPanel.visible{display:flex}
+#pinLockCard{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px;color:#111827}
+#pinLockCard h2{font-size:20px;text-align:center}
+#pinLockCard p{font-size:14px;text-align:center;color:#475569}
+#pinLockCard input{width:100%;padding:12px;border:1px solid #9ca3af;border-radius:8px;font-size:20px;text-align:center;letter-spacing:5px}
+#pinLockCard button{border:0;border-radius:8px;padding:12px;font-size:16px;cursor:pointer}
+#pinSubmitBtn{background:#111827;color:#fff}
+#pinBackBtn{background:#f1f5f9;color:#111827}
+#pinMessage{min-height:18px;color:#b91c1c;font-size:13px;text-align:center}
 
 </style>
 </head>
 <body>
 
 
-<div id="biometricLock" role="dialog" aria-modal="true" aria-labelledby="biometricLockTitle">
-  <div class="biometric-lock-card">
-    <div class="biometric-lock-icon" aria-hidden="true">🔐</div>
-    <h2 id="biometricLockTitle">Kalpvruksha Bill सुरक्षित है</h2>
-    <p>बिलिंग ऐप खोलने के लिए अपने फोन के फिंगरप्रिंट सेंसर से पहचान सत्यापित करें।</p>
-    <div id="biometricLockStatus" role="status" aria-live="polite">फिंगरप्रिंट सत्यापन शुरू हो रहा है…</div>
-    <button id="biometricUnlockBtn" type="button" onclick="requestBiometricUnlock()">👆 फिंगरप्रिंट से खोलें</button>
+<div id="biometricLock" role="dialog" aria-modal="true" aria-label="Biometric lock">
+  <button id="biometricUnlockBtn" type="button" aria-label="Fingerprint unlock" onclick="requestBiometricUnlock()">
+    <svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
+      <path d="M32 8C19 8 10 17 10 29"/>
+      <path d="M42 11C50 15 54 22 54 31"/>
+      <path d="M18 30c0-9 6-15 14-15s14 6 14 15"/>
+      <path d="M24 30c0-5 3-8 8-8s8 3 8 8c0 13-2 22-7 29"/>
+      <path d="M31 30c0 11-1 18-4 24"/>
+      <path d="M12 35c1 7 3 13 6 18"/>
+      <path d="M52 38c-1 5-2 8-4 12"/>
+      <path d="M20 30c0 5 0 10 2 15"/>
+      <path d="M46 32c0 4 0 7-1 10"/>
+    </svg>
+  </button>
+</div>
+<div id="pinLockPanel" aria-modal="true" role="dialog" aria-label="Backup PIN">
+  <div id="pinLockCard">
+    <h2 id="pinTitle">बैकअप PIN</h2>
+    <p id="pinDescription">फिंगरप्रिंट के बजाय PIN इस्तेमाल करें</p>
+    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="PIN (4–8 अंक)" aria-label="PIN">
+    <input id="pinConfirmInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="PIN फिर से डालें" aria-label="Confirm PIN" style="display:none">
+    <div id="pinMessage" aria-live="polite"></div>
+    <button id="pinSubmitBtn" type="button" onclick="submitBackupPin()">जारी रखें</button>
+    <button id="pinBackBtn" type="button" onclick="closeBackupPin()">फिंगरप्रिंट पर वापस जाएँ</button>
   </div>
 </div>
 
@@ -1345,85 +1373,96 @@ window.cancelEditBill=function(){_cancelEditOrig();payDue=false;payBoxBill.paint
 </script>
 
 <script>
-/* Added biometric app lock. Existing billing scripts above are left unchanged. */
+/* Biometric lock with an optional native-stored backup PIN. Initial lock screen stays icon-only. */
 (function () {
   let biometricUnlocked = false;
   let biometricRequestInProgress = false;
+  let pinSetupMode = false;
+  let pinBusy = false;
+  let retryAfterPrompt = false;
+  let longPressTimer = null;
+  let longPressTriggered = false;
   const lock = () => document.getElementById("biometricLock");
-  const status = () => document.getElementById("biometricLockStatus");
   const button = () => document.getElementById("biometricUnlockBtn");
+  const pinPanel = () => document.getElementById("pinLockPanel");
+  const pinInput = () => document.getElementById("pinInput");
+  const pinConfirm = () => document.getElementById("pinConfirmInput");
+  const pinMessage = () => document.getElementById("pinMessage");
+  const nativePin = () => window.AndroidBiometric && typeof window.AndroidBiometric.isPinSet === "function";
 
-  function showLock(message) {
+  function showLock() {
     biometricUnlocked = false;
-    const el = lock();
-    if (el) el.classList.remove("hidden");
+    if (lock()) lock().classList.remove("hidden");
+    if (pinPanel()) pinPanel().classList.remove("visible");
     document.body.classList.add("biometric-locked");
-    if (message && status()) status().textContent = message;
   }
-
   function unlockApp() {
     biometricUnlocked = true;
     biometricRequestInProgress = false;
-    const el = lock();
-    if (el) el.classList.add("hidden");
+    if (lock()) lock().classList.add("hidden");
+    if (pinPanel()) pinPanel().classList.remove("visible");
     document.body.classList.remove("biometric-locked");
     if (button()) button().disabled = false;
   }
-
-  window.onBiometricResult = function (success, reason) {
+  window.onBiometricResult = function (success) {
     biometricRequestInProgress = false;
     if (button()) button().disabled = false;
-    if (success === true) {
-      unlockApp();
-      return;
-    }
-    showLock("फिंगरप्रिंट सत्यापन पूरा नहीं हुआ। दोबारा कोशिश करें।");
-    if (reason === "unavailable") {
-      status().textContent = "इस फोन में फिंगरप्रिंट उपलब्ध नहीं है या सेट नहीं है। फोन की Settings में फिंगरप्रिंट सेट करें, फिर दोबारा कोशिश करें।";
-    } else if (reason && String(reason).toLowerCase().includes("cancel")) {
-      status().textContent = "ऐप लॉक है। खोलने के लिए फिंगरप्रिंट सत्यापित करें।";
-    }
+    if (success === true) unlockApp(); else showLock();
   };
-
-  window.onBiometricAttemptFailed = function () {
-    if (status()) status().textContent = "फिंगरप्रिंट मेल नहीं हुआ। सेंसर पर सही उंगली रखें।";
-  };
-
+  window.onBiometricAttemptFailed = function () {};
   window.requestBiometricUnlock = function () {
     if (biometricUnlocked || biometricRequestInProgress) return;
-    if (!window.AndroidBiometric || typeof window.AndroidBiometric.authenticate !== "function") {
-      showLock("यह सुरक्षा लॉक Android APK में काम करता है। कृपया GitHub Actions से नया APK बनाकर इंस्टॉल करें।");
-      return;
-    }
+    if (!window.AndroidBiometric || typeof window.AndroidBiometric.authenticate !== "function") { showLock(); return; }
     biometricRequestInProgress = true;
     if (button()) button().disabled = true;
-    if (status()) status().textContent = "फिंगरप्रिंट सेंसर पर उंगली रखें…";
-    try {
-      window.AndroidBiometric.authenticate();
-    } catch (e) {
-      biometricRequestInProgress = false;
-      if (button()) button().disabled = false;
-      showLock("फिंगरप्रिंट शुरू नहीं हो सका। दोबारा कोशिश करें।");
-    }
+    try { window.AndroidBiometric.authenticate(); }
+    catch (e) { biometricRequestInProgress = false; if (button()) button().disabled = false; showLock(); }
   };
-
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden" && biometricUnlocked) {
-      showLock("ऐप दोबारा खोलने के लिए फिंगरप्रिंट सत्यापित करें।");
-    } else if (document.visibilityState === "visible" && !biometricUnlocked) {
-      requestBiometricUnlock();
-    }
-  });
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      showLock("फिंगरप्रिंट सत्यापन शुरू हो रहा है…");
-      requestBiometricUnlock();
-    }, { once: true });
-  } else {
-    showLock("फिंगरप्रिंट सत्यापन शुरू हो रहा है…");
-    requestBiometricUnlock();
+  function openBackupPin() {
+    if (biometricUnlocked || pinBusy) return;
+    if (!nativePin()) { return; }
+    try { pinSetupMode = !window.AndroidBiometric.isPinSet(); }
+    catch (e) { pinSetupMode = true; }
+    document.getElementById("pinTitle").textContent = pinSetupMode ? "बैकअप PIN सेट करें" : "बैकअप PIN डालें";
+    document.getElementById("pinDescription").textContent = pinSetupMode ? "4 से 8 अंकों का PIN बनाएँ" : "ऐप खोलने के लिए अपना PIN डालें";
+    pinConfirm().style.display = pinSetupMode ? "block" : "none";
+    pinInput().value = ""; pinConfirm().value = ""; pinMessage().textContent = "";
+    document.getElementById("pinSubmitBtn").textContent = pinSetupMode ? "PIN सेव करें" : "अनलॉक करें";
+    lock().classList.add("hidden"); pinPanel().classList.add("visible");
+    setTimeout(() => pinInput().focus(), 80);
   }
+  window.closeBackupPin = function () { pinPanel().classList.remove("visible"); lock().classList.remove("hidden"); pinInput().value = ""; pinConfirm().value = ""; };
+  window.submitBackupPin = function () {
+    if (pinBusy || !nativePin()) return;
+    const pin = pinInput().value.trim();
+    if (!/^\d{4,8}$/.test(pin)) { pinMessage().textContent = "PIN 4 से 8 अंकों का होना चाहिए।"; return; }
+    pinBusy = true;
+    try {
+      if (pinSetupMode) {
+        if (pinConfirm().value.trim() !== pin) { pinMessage().textContent = "दोनों PIN एक जैसे नहीं हैं।"; pinBusy = false; return; }
+        const ok = window.AndroidBiometric.setPin(pin);
+        if (ok) unlockApp(); else pinMessage().textContent = "PIN सेव नहीं हो पाया। दोबारा कोशिश करें।";
+      } else {
+        if (window.AndroidBiometric.verifyPin(pin)) unlockApp();
+        else pinMessage().textContent = "PIN गलत है। दोबारा कोशिश करें।";
+      }
+    } catch (e) { pinMessage().textContent = "PIN सुविधा उपलब्ध नहीं है।"; }
+    pinBusy = false;
+  };
+  const fp = button();
+  if (fp) {
+    fp.addEventListener("contextmenu", e => { e.preventDefault(); openBackupPin(); });
+    fp.addEventListener("touchstart", () => { longPressTriggered = false; longPressTimer = setTimeout(() => { longPressTriggered = true; openBackupPin(); }, 700); }, {passive:true});
+    ["touchend","touchcancel"].forEach(evt => fp.addEventListener(evt, () => { if (longPressTimer) clearTimeout(longPressTimer); }, {passive:true}));
+    fp.addEventListener("click", e => { if (longPressTriggered) { e.preventDefault(); longPressTriggered = false; return; } window.requestBiometricUnlock(); });
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && biometricUnlocked) { retryAfterPrompt = true; showLock(); }
+    else if (document.visibilityState === "visible" && !biometricUnlocked && retryAfterPrompt) retryAfterPrompt = false;
+  });
+  function startLocked() { showLock(); window.requestBiometricUnlock(); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startLocked, { once: true });
+  else startLocked();
 })();
 </script>
 
