@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Run Capacitor Assets
+        run: |
+          npm install @capacitor/assets --save-dev
+          npx capacitor-assets generate
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -50,7 +55,7 @@ jobs:
 
       - name: Add speech service visibility
         run: |
-          sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.speech.RecognitionService" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#  <queries>\n    <intent>\n      <action android:name="android.speech.RecognitionService" />\n    </intent>\n  </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
       - name: Add print and backup bridge
         run: |
@@ -145,7 +150,6 @@ jobs:
                               public void onBufferReceived(byte[] b) {}
                               public void onEndOfSpeech() {}
                               public void onEvent(int t, Bundle b) {}
-
                               public void onPartialResults(Bundle b) {
                                   ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                                   if (r != null && r.size() > 0) {
@@ -153,7 +157,6 @@ jobs:
                                       js("window.onVoicePartial&&window.onVoicePartial(" + JSONObject.quote(r.get(0)) + ")");
                                   }
                               }
-
                               public void onResults(Bundle b) {
                                   ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                                   if (r != null && r.size() > 0) {
@@ -162,7 +165,6 @@ jobs:
                                   }
                                   restartSpeech(250);
                               }
-
                               public void onError(int code) {
                                   if (!speechActive) return;
                                   js("window.onVoicePartial&&window.onVoicePartial('')");
@@ -179,7 +181,9 @@ jobs:
                                       fatalSpeech("error " + code);
                                       return;
                                   }
-                                  try { sr.cancel(); } catch (Exception e) {}
+                                  try {
+                                      sr.cancel();
+                                  } catch (Exception e) {}
                                   restartSpeech(code == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ? 700 : 1000);
                               }
                           });
@@ -198,13 +202,12 @@ jobs:
                               WebView wv = getBridge().getWebView();
                               PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
                               String name = (title == null || title.isEmpty()) ? "Invoice" : title;
-                              pm.print(name, wv.createPrintDocumentAdapter(name),
-                                  new PrintAttributes.Builder()
-                                      .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
-                                      .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
-                                      .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
-                                      .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-                                      .build());
+                              pm.print(name, wv.createPrintDocumentAdapter(name), new PrintAttributes.Builder()
+                                  .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                  .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
+                                  .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
+                                  .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                                  .build());
                           }
                       });
                   }
@@ -238,7 +241,9 @@ jobs:
                               speechActive = false;
                               uiHandler.removeCallbacksAndMessages(null);
                               if (sr != null) {
-                                  try { sr.stopListening(); } catch (Exception e) {}
+                                  try {
+                                      sr.stopListening();
+                                  } catch (Exception e) {}
                               }
                           }
                       });
@@ -269,10 +274,10 @@ jobs:
                       runOnUiThread(new Runnable() {
                           public void run() {
                               Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                              i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                  | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                                  | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                                  | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+                              i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+                                         Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
                               MainActivity.this.startActivityForResult(i, REQ_PICK_FOLDER);
                           }
                       });
@@ -297,19 +302,16 @@ jobs:
                           String treeDocId = DocumentsContract.getTreeDocumentId(tree);
                           Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, treeDocId);
                           Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, treeDocId);
-
                           HashMap<String, Uri> existing = new HashMap<String, Uri>();
                           Cursor c = getContentResolver().query(children, new String[]{
                               DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                               DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null);
                           if (c != null) {
                               while (c.moveToNext()) {
-                                  existing.put(c.getString(1),
-                                      DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0)));
+                                  existing.put(c.getString(1), DocumentsContract.buildDocumentUriUsingTree(tree, c.getString(0)));
                               }
                               c.close();
                           }
-
                           JSONArray arr = new JSONArray(json);
                           int count = 0;
                           for (int i = 0; i < arr.length(); i++) {
@@ -393,7 +395,9 @@ jobs:
                   speechActive = false;
                   uiHandler.removeCallbacksAndMessages(null);
                   if (sr != null) {
-                      try { sr.destroy(); } catch (Exception e) {}
+                      try {
+                          sr.destroy();
+                      } catch (Exception e) {}
                       sr = null;
                   }
                   super.onDestroy();
@@ -413,3 +417,4 @@ jobs:
         with:
           name: my-app-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
