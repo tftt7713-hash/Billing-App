@@ -35,9 +35,31 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 .history-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:1rem}.history-item-name{flex:1;min-width:0}.history-item-qty{color:#64748b;white-space:nowrap}.history-item-price{font-weight:bold;white-space:nowrap}
 .voice-btn.listening{animation:voicePulse 1s infinite}@keyframes voicePulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
+
+#biometricLock{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(145deg,#0f172a,#1e3a8a);color:#fff;text-align:center}
+#biometricLock.hidden{display:none}
+.biometric-lock-card{width:100%;max-width:380px;padding:28px 22px;border:1px solid rgba(255,255,255,.22);border-radius:20px;background:rgba(15,23,42,.82);box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.biometric-lock-icon{font-size:4rem;margin-bottom:14px}
+.biometric-lock-card h2{font-size:1.45rem;margin-bottom:10px}
+.biometric-lock-card p{line-height:1.55;color:#dbeafe;margin-bottom:16px}
+#biometricLockStatus{min-height:44px;font-size:.95rem;color:#fde68a;margin:12px 0}
+#biometricUnlockBtn{width:100%;padding:14px;border:0;border-radius:10px;background:#22c55e;color:#052e16;font-weight:bold;font-size:1rem;cursor:pointer}
+#biometricUnlockBtn:disabled{opacity:.65}
+
 </style>
 </head>
 <body>
+
+
+<div id="biometricLock" role="dialog" aria-modal="true" aria-labelledby="biometricLockTitle">
+  <div class="biometric-lock-card">
+    <div class="biometric-lock-icon" aria-hidden="true">🔐</div>
+    <h2 id="biometricLockTitle">Kalpvruksha Bill सुरक्षित है</h2>
+    <p>बिलिंग ऐप खोलने के लिए अपने फोन के फिंगरप्रिंट सेंसर से पहचान सत्यापित करें।</p>
+    <div id="biometricLockStatus" role="status" aria-live="polite">फिंगरप्रिंट सत्यापन शुरू हो रहा है…</div>
+    <button id="biometricUnlockBtn" type="button" onclick="requestBiometricUnlock()">👆 फिंगरप्रिंट से खोलें</button>
+  </div>
+</div>
 
 <div class="swipe-handle" id="menuSwipeHandle"></div>
 <div class="sidebar-container" id="appSidebar">
@@ -1321,5 +1343,89 @@ if(b&&editingBillId!==null){payDue=!!b.due;payBoxBill.paint()}
 const _cancelEditOrig=cancelEditBill;
 window.cancelEditBill=function(){_cancelEditOrig();payDue=false;payBoxBill.paint()};
 </script>
+
+<script>
+/* Added biometric app lock. Existing billing scripts above are left unchanged. */
+(function () {
+  let biometricUnlocked = false;
+  let biometricRequestInProgress = false;
+  const lock = () => document.getElementById("biometricLock");
+  const status = () => document.getElementById("biometricLockStatus");
+  const button = () => document.getElementById("biometricUnlockBtn");
+
+  function showLock(message) {
+    biometricUnlocked = false;
+    const el = lock();
+    if (el) el.classList.remove("hidden");
+    document.body.classList.add("biometric-locked");
+    if (message && status()) status().textContent = message;
+  }
+
+  function unlockApp() {
+    biometricUnlocked = true;
+    biometricRequestInProgress = false;
+    const el = lock();
+    if (el) el.classList.add("hidden");
+    document.body.classList.remove("biometric-locked");
+    if (button()) button().disabled = false;
+  }
+
+  window.onBiometricResult = function (success, reason) {
+    biometricRequestInProgress = false;
+    if (button()) button().disabled = false;
+    if (success === true) {
+      unlockApp();
+      return;
+    }
+    showLock("फिंगरप्रिंट सत्यापन पूरा नहीं हुआ। दोबारा कोशिश करें।");
+    if (reason === "unavailable") {
+      status().textContent = "इस फोन में फिंगरप्रिंट उपलब्ध नहीं है या सेट नहीं है। फोन की Settings में फिंगरप्रिंट सेट करें, फिर दोबारा कोशिश करें।";
+    } else if (reason && String(reason).toLowerCase().includes("cancel")) {
+      status().textContent = "ऐप लॉक है। खोलने के लिए फिंगरप्रिंट सत्यापित करें।";
+    }
+  };
+
+  window.onBiometricAttemptFailed = function () {
+    if (status()) status().textContent = "फिंगरप्रिंट मेल नहीं हुआ। सेंसर पर सही उंगली रखें।";
+  };
+
+  window.requestBiometricUnlock = function () {
+    if (biometricUnlocked || biometricRequestInProgress) return;
+    if (!window.AndroidBiometric || typeof window.AndroidBiometric.authenticate !== "function") {
+      showLock("यह सुरक्षा लॉक Android APK में काम करता है। कृपया GitHub Actions से नया APK बनाकर इंस्टॉल करें।");
+      return;
+    }
+    biometricRequestInProgress = true;
+    if (button()) button().disabled = true;
+    if (status()) status().textContent = "फिंगरप्रिंट सेंसर पर उंगली रखें…";
+    try {
+      window.AndroidBiometric.authenticate();
+    } catch (e) {
+      biometricRequestInProgress = false;
+      if (button()) button().disabled = false;
+      showLock("फिंगरप्रिंट शुरू नहीं हो सका। दोबारा कोशिश करें।");
+    }
+  };
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && biometricUnlocked) {
+      showLock("ऐप दोबारा खोलने के लिए फिंगरप्रिंट सत्यापित करें।");
+    } else if (document.visibilityState === "visible" && !biometricUnlocked) {
+      requestBiometricUnlock();
+    }
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      showLock("फिंगरप्रिंट सत्यापन शुरू हो रहा है…");
+      requestBiometricUnlock();
+    }, { once: true });
+  } else {
+    showLock("फिंगरप्रिंट सत्यापन शुरू हो रहा है…");
+    requestBiometricUnlock();
+  }
+})();
+</script>
+
 </body>
 </html>
