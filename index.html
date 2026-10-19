@@ -57,6 +57,7 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 <div class="swipe-hint" onclick="toggleMobileMenu(true)">👈 मेनू के लिए बाएँ से दाएँ स्वाइप करें या यहाँ क्लिक करें</div>
 
 <div id="bill-pg" class="page active">
+<div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" id="copyBtn" onclick="copyBill()" style="background:#e2e8f0;border:1px solid #94a3b8;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer">📑 कॉपी</button><button type="button" id="pasteBtn" onclick="pasteBill()" style="background:#e2e8f0;border:1px solid #94a3b8;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer">📋 पेस्ट</button></div>
 <div class="page-header"><h2>नया बिल जनरेट</h2><input type="date" id="billDate" style="padding:8px;border:2px solid #94a3b8;border-radius:6px"></div>
 <div class="form-group"><label>कस्टमर का नाम:</label><input type="text" id="custName" placeholder="जैसे: कल्पेश भाई"></div>
 <div class="invoice-box" style="border:2px solid var(--bd);border-radius:6px;margin-bottom:15px">
@@ -98,7 +99,7 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 </div>
 
 <div id="hist-pg" class="page">
-<h2 style="margin-bottom:15px">बिल हिस्ट्री और सर्च</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px;flex-wrap:wrap"><h2>बिल हिस्ट्री और सर्च</h2><div style="display:flex;gap:6px;align-items:center"><input type="date" id="hDate" oninput="showHistory()" style="padding:8px;border:2px solid #94a3b8;border-radius:6px"><button type="button" onclick="clearHistDate()" title="तारीख हटाएँ" style="background:#e2e8f0;border:0;border-radius:6px;padding:10px;cursor:pointer">❌</button></div></div>
 <div class="search-container" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px">
 <div class="form-group"><label>कस्टमर खोजें:</label><input type="text" id="sCust" oninput="showHistory()" placeholder="जैसे: कल्पेश"></div>
 <div class="form-group"><label>आइटम खोजें:</label><input type="text" id="sItem" oninput="showHistory()" placeholder="जैसे: धूप"></div>
@@ -355,6 +356,7 @@ renderVoiceBill(c)
 }
 
 function clearVoice(){
+vPayDue=false;if(payBoxVoice)payBoxVoice.paint();
 vBase=freshVState();vLog="";
 renderVoiceBill(vBase);showVoiceLive("")
 }
@@ -371,7 +373,9 @@ if(r.name&&!isNaN(rate)){items.push({name:r.name,qty:r.qty,price:rate,amount:rat
 });
 if(!items.length){alert("कृपया कम से कम 1 आइटम (नाम + प्राइस) भरें!");return}
 const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
-list.push({id:Date.now(),customer:name,date:new Date(rawDate+"T00:00:00").toLocaleDateString("hi-IN"),rawDate:rawDate,items:items,total:total});
+const vb={id:Date.now(),customer:name,date:new Date(rawDate+"T00:00:00").toLocaleDateString("hi-IN"),rawDate:rawDate,items:items,total:total};
+if(vPayDue)vb.due=true;
+list.push(vb);
 localStorage.setItem("my_bills",JSON.stringify(list));
 alert("✅ बिल सफलतापूर्वक सेव हो गया है!");
 clearVoice()
@@ -640,38 +644,145 @@ if(bill&&bill.id!==undefined&&bill.id!==null)return "id:"+bill.id;
 return "data:"+JSON.stringify([bill&&bill.customer,bill&&bill.date,bill&&bill.items,bill&&bill.total])
 }
 
+/* ===== HISTORY: हिंदी-English खोज, कस्टमर पेज, PDF, एडिट, तारीख ===== */
+const _DV={"क":"k","ख":"kh","ग":"g","घ":"gh","ङ":"n","च":"ch","छ":"ch","ज":"j","झ":"jh","ञ":"n","ट":"t","ठ":"th","ड":"d","ढ":"dh","ण":"n","त":"t","थ":"th","द":"d","ध":"dh","न":"n","प":"p","फ":"ph","ब":"b","भ":"bh","म":"m","य":"y","र":"r","ल":"l","ळ":"l","व":"v","श":"sh","ष":"sh","स":"s","ह":"h"};
+const _DVOW={"अ":"a","आ":"a","इ":"i","ई":"i","उ":"u","ऊ":"u","ऋ":"ri","ए":"e","ऐ":"ai","ओ":"o","औ":"au","ऑ":"o","ऍ":"e"};
+const _DMAT={"ा":"a","ि":"i","ी":"i","ु":"u","ू":"u","े":"e","ै":"ai","ो":"o","ौ":"au","ृ":"ri","ॉ":"o","ॅ":"e"};
+
+function romanize(s){
+s=String(s).normalize("NFC").replace(/़/g,"");
+let o="";
+for(const c of s){
+if(_DV[c]!==undefined)o+=_DV[c];
+else if(_DVOW[c]!==undefined)o+=_DVOW[c];
+else if(_DMAT[c]!==undefined)o+=_DMAT[c];
+else if(c==="ं"||c==="ँ")o+="n";
+else if(c==="ः")o+="h";
+else if(c==="्")continue;
+else o+=c
+}
+return o
+}
+
+function canonKey(s){
+return romanize(s).toLowerCase().replace(/[^a-z0-9]/g,"")
+.replace(/sh/g,"s").replace(/ch/g,"c").replace(/ph/g,"f").replace(/h/g,"")
+.replace(/w/g,"v").replace(/z/g,"j").replace(/q/g,"k").replace(/x/g,"ks")
+.replace(/ay/g,"ai").replace(/ee/g,"i").replace(/oo/g,"u").replace(/a/g,"").replace(/(.)\1+/g,"$1")
+}
+
+function hMatch(hay,q){
+if(!q)return true;
+const h=String(hay||"").toLowerCase();
+if(h.includes(q))return true;
+const k=canonKey(q);
+return k?canonKey(hay).includes(k):false
+}
+
+function billISO(b){
+if(b&&b.rawDate&&/^\d{4}-\d{2}-\d{2}$/.test(b.rawDate))return b.rawDate;
+const m=String((b&&b.date)||"").replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)).match(/(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})/);
+if(!m)return "";
+let y=+m[3];if(y<100)y+=2000;
+return y+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0")
+}
+
+function billTotal(b){
+const t=Number(b&&b.total);
+if(!isNaN(t)&&t>0)return t;
+return (b.items||[]).reduce((s,i)=>s+(Number(i.price)||0),0)
+}
+
+function histFind(id){
+let list=[];try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+return list.find(b=>String(b&&b.id)===String(id))||null
+}
+
+function payBadge(b,ida){
+if(b.due)return `<span onclick="markPaid(${ida})" title="दबाने पर पूरा हो जाएगा" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:6px 10px;font-weight:bold;font-size:.9rem;cursor:pointer;white-space:nowrap">बाकी ₹${billTotal(b).toLocaleString("en-IN")}</span>`;
+return `<span style="background:#dcfce7;color:#14532d;border-radius:6px;padding:6px 10px;font-weight:bold;font-size:.9rem;white-space:nowrap">✓ पूरा</span>`
+}
+
+function markPaid(id){
+if(!confirm("इस बिल को 'पूरा' कर दें?"))return;
+let list=[];try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+const b=list.find(x=>String(x&&x.id)===String(id));
+if(!b)return;
+delete b.due;
+localStorage.setItem("my_bills",JSON.stringify(list));
+showHistory()
+}
+
+function billCardHtml(b,sI){
+let itemsHtml="";
+(b.items||[]).forEach(item=>{
+if(sI&&!hMatch(item.name,sI))return;
+itemsHtml+=`<div class="history-item"><div class="history-item-name">• ${escapeHtml(item.name||"")}</div><div class="history-item-qty">(${escapeHtml(item.qty||"1")})</div><div class="history-item-price">₹${Number(item.price||0).toFixed(2)}</div></div>`
+});
+if(!itemsHtml)return "";
+const ida=escapeHtml(JSON.stringify(b.id));
+return `<div class="history-card"><div class="history-card-header"><span style="min-width:0">👤 ग्राहक: ${escapeHtml(b.customer||"")}</span><span style="display:flex;gap:6px;flex:0 0 auto"><button class="history-delete-btn" type="button" style="background:#475569;font-size:15px" onclick="editHistoryBill(${ida})" title="बिल एडिट करें">✏️</button><button class="history-delete-btn" type="button" style="background:#2563eb;font-size:14px;font-weight:bold;color:#fff" onclick="pdfHistoryBill(${ida})" title="PDF खोलें">📄 PDF</button><button class="history-delete-btn" type="button" onclick="deleteHistoryBill(${ida})" title="बिल डिलीट करें">🗑️</button></span></div><div class="history-card-body"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div class="history-date" style="margin-bottom:0">📅 दिनांक: ${escapeHtml(b.date||"")}</div>${payBadge(b,ida)}</div>${itemsHtml}</div></div>`
+}
+
+let histCust=null,histLastQ="";
+const histKey=b=>canonKey(b.customer)||String(b.customer||"").toLowerCase();
+const histRecent=(x,y)=>(billISO(y)||"").localeCompare(billISO(x)||"")||(Number(y.id)||0)-(Number(x.id)||0);
+
+function openHistCust(k){histCust=k;showHistory();window.scrollTo(0,0)}
+function histBack(){histCust=null;showHistory();window.scrollTo(0,0)}
+function clearHistDate(){document.getElementById("hDate").value="";showHistory()}
+
 function showHistory(){
 const sC=document.getElementById("sCust").value.toLowerCase().trim();
 const sI=document.getElementById("sItem").value.toLowerCase().trim();
+const dt=document.getElementById("hDate").value;
+const q=sC+"|"+sI+"|"+dt;
+if(q!==histLastQ){histCust=null;histLastQ=q}
 const area=document.getElementById("histArea");
-const list=JSON.parse(localStorage.getItem("my_bills")||"[]");
+let list=[];
+try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){list=[]}
+if(!Array.isArray(list))list=[];
 
-area.innerHTML="";
-
-const filtered=list.filter(b=>{
-const customer=String(b.customer||"").toLowerCase();
-const itemMatch=!sI||(b.items||[]).some(i=>String(i.name||"").toLowerCase().includes(sI));
-return customer.includes(sC)&&itemMatch
-});
+const filtered=list.filter(b=>hMatch(b.customer,sC)&&(!sI||(b.items||[]).some(i=>hMatch(i.name,sI)))&&(!dt||billISO(b)===dt));
 
 if(!filtered.length){
+histCust=null;
 area.innerHTML=`<p style="text-align:center;color:#64748b;padding:20px">कोई रिकॉर्ड नहीं मिला।</p>`;
 return
 }
 
-filtered.forEach(b=>{
-let itemsHtml="";
+if(histCust!==null){
+const mine=filtered.filter(b=>histKey(b)===histCust).sort(histRecent);
+if(mine.length){
+const total=mine.reduce((s,b)=>s+billTotal(b),0);
+const dueAmt=mine.filter(b=>b.due).reduce((s,b)=>s+billTotal(b),0);
+let h=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><button type="button" onclick="histBack()" style="background:#475569;color:#fff;border:0;border-radius:6px;padding:10px 14px;font-weight:bold;cursor:pointer">⬅ वापस</button><strong style="font-size:1.2rem">👤 ${escapeHtml(mine[0].customer||"")}</strong></div><div style="display:flex;gap:8px;margin-bottom:14px"><div style="flex:1;background:#f1f5f9;border-radius:8px;padding:10px"><div style="font-size:.8rem;color:#64748b">कुल बिल</div><div style="font-size:1.15rem;font-weight:bold">${mine.length}</div></div><div style="flex:1.3;background:#f1f5f9;border-radius:8px;padding:10px"><div style="font-size:.8rem;color:#64748b">कुल रकम</div><div style="font-size:1.15rem;font-weight:bold">₹${total.toLocaleString("en-IN")}</div></div><div style="flex:1.3;background:${dueAmt>0?"#fee2e2":"#dcfce7"};border-radius:8px;padding:10px"><div style="font-size:.8rem;color:${dueAmt>0?"#991b1b":"#14532d"}">कुल बाकी</div><div style="font-size:1.15rem;font-weight:bold;color:${dueAmt>0?"#991b1b":"#14532d"}">₹${dueAmt.toLocaleString("en-IN")}</div></div></div>`;
+mine.forEach(b=>{h+=billCardHtml(b,sI)});
+area.innerHTML=h;
+return
+}
+histCust=null
+}
 
-(b.items||[]).forEach(item=>{
-if(sI&&!String(item.name||"").toLowerCase().includes(sI))return;
-
-itemsHtml+=`<div class="history-item"><div class="history-item-name">• ${escapeHtml(item.name||"")}</div><div class="history-item-qty">(${escapeHtml(item.qty||"1")})</div><div class="history-item-price">₹${Number(item.price||0).toFixed(2)}</div></div>`
+if(sC){
+const groups={};
+filtered.forEach(b=>{const k=histKey(b);(groups[k]=groups[k]||[]).push(b)});
+let h=`<p style="font-size:.85rem;color:#64748b;margin-bottom:8px">कस्टमर मिले (${Object.keys(groups).length}) — नाम पर दबाएँ</p>`;
+Object.keys(groups).forEach(k=>{
+const bills=groups[k].slice().sort(histRecent);
+const names=[];bills.forEach(b=>{const n=String(b.customer||"").trim();if(n&&names.indexOf(n)<0)names.push(n)});
+const total=bills.reduce((s,b)=>s+billTotal(b),0);
+const gDue=bills.filter(b=>b.due).reduce((s,b)=>s+billTotal(b),0);
+const sub=names.length>1?`<div style="font-size:.8rem;color:#64748b">${escapeHtml(names.slice(1).join(", "))} भी जुड़ा</div>`:"";
+h+=`<div data-k="${escapeHtml(k)}" onclick="openHistCust(this.dataset.k)" style="display:flex;align-items:center;gap:10px;border:2px solid #bfdbfe;background:#eff6ff;border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer"><div style="flex:1;min-width:0"><div style="font-weight:bold;color:#1d4ed8;font-size:1.05rem">👤 ${escapeHtml(names[0]||"")}</div>${sub}</div><div style="text-align:right"><div style="font-weight:bold">${bills.length} बिल</div><div style="font-size:.85rem;color:#475569">₹${total.toLocaleString("en-IN")}</div>${gDue?`<div style="font-size:.8rem;color:#b91c1c;font-weight:bold">बाकी ₹${gDue.toLocaleString("en-IN")}</div>`:""}</div><div style="font-size:1.4rem;color:#1d4ed8">›</div></div>`
 });
+area.innerHTML=h;
+return
+}
 
-if(!itemsHtml)return;
-
-area.innerHTML+=`<div class="history-card"><div class="history-card-header"><span>👤 ग्राहक: ${escapeHtml(b.customer||"")}</span><button class="history-delete-btn" type="button" onclick="deleteHistoryBill(${JSON.stringify(b.id)})" title="बिल डिलीट करें">🗑️</button></div><div class="history-card-body"><div class="history-date">📅 दिनांक: ${escapeHtml(b.date||"")}</div>${itemsHtml}</div></div>`
-})
+let html="";
+filtered.forEach(b=>{html+=billCardHtml(b,sI)});
+area.innerHTML=html||`<p style="text-align:center;color:#64748b;padding:20px">कोई रिकॉर्ड नहीं मिला।</p>`
 }
 
 function deleteHistoryBill(id){
@@ -932,6 +1043,283 @@ alert("❌ Folder में backup save नहीं हो पाया।\n\n�
 window._pendingBackup=true;
 B.pickFolder()
 }
+
+/* ===== हिस्ट्री से PDF खोलना (वही प्रोफेशनल इनवॉइस) ===== */
+function pdfHistoryBill(id){
+const b=histFind(id);
+if(!b)return;
+const cust=document.getElementById("custName"),dt=document.getElementById("billDate");
+const rowsNow=()=>Array.from(document.querySelectorAll(".table-row"));
+const saved={c:cust.value,d:dt.value,rows:rowsNow().map(r=>[r.querySelector(".i-name").value,r.querySelector(".i-qty").value,r.querySelector(".i-price").value])};
+const items=b.items||[];
+const box=document.getElementById("rows-container");
+rowsNow().forEach(r=>{r.querySelector(".i-name").value="";r.querySelector(".i-qty").value="";r.querySelector(".i-price").value=""});
+while(rowsNow().length<items.length){
+const c=box.querySelector(".table-row").cloneNode(true);
+c.setAttribute("data-extra","1");
+box.appendChild(c)
+}
+cust.value=b.customer||"";
+dt.value=billISO(b);
+rowsNow().forEach((r,i)=>{
+const it=items[i];
+if(!it)return;
+r.querySelector(".i-name").value=it.name||"";
+r.querySelector(".i-qty").value=it.qty||"";
+r.querySelector(".i-price").value=(it.price===undefined||it.price===null)?"":it.price
+});
+try{openInvoicePreview()}
+finally{
+document.querySelectorAll(".table-row[data-extra]").forEach(r=>r.remove());
+cust.value=saved.c;dt.value=saved.d;
+rowsNow().forEach((r,i)=>{
+const v=saved.rows[i]||["","",""];
+r.querySelector(".i-name").value=v[0];r.querySelector(".i-qty").value=v[1];r.querySelector(".i-price").value=v[2]
+});
+calcTotal()
+}
+}
+
+/* ===== हिस्ट्री से बिल एडिट करना ===== */
+let editingBillId=null;
+
+function showEditBanner(on){
+let bn=document.getElementById("editBanner");
+if(!on){if(bn)bn.remove();return}
+if(bn)return;
+bn=document.createElement("div");
+bn.id="editBanner";
+bn.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fef9c3;border:2px solid #facc15;color:#713f12;padding:10px;border-radius:6px;margin-bottom:12px;font-weight:bold";
+bn.innerHTML='<span>✏️ आप पुराना बिल एडिट कर रहे हैं।</span><button type="button" onclick="cancelEditBill()" style="background:#475569;color:#fff;border:0;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer">रद्द करें</button>';
+const fg=document.getElementById("custName").closest(".form-group");
+fg.parentNode.insertBefore(bn,fg)
+}
+
+function clearBillForm(){
+document.querySelectorAll(".table-row[data-extra]").forEach(r=>r.remove());
+document.getElementById("custName").value="";
+document.querySelectorAll(".i-name,.i-qty,.i-price").forEach(el=>{el.value=""});
+calcTotal()
+}
+
+function cancelEditBill(){
+editingBillId=null;
+showEditBanner(false);
+clearBillForm()
+}
+
+function editHistoryBill(id){
+const b=histFind(id);
+if(!b)return;
+const dirty=document.getElementById("custName").value.trim()||Array.from(document.querySelectorAll(".i-name")).some(i=>i.value.trim());
+if(dirty&&editingBillId===null&&!confirm("बिल वाले पेज पर भरा हुआ डेटा मिट जाएगा। एडिट शुरू करें?"))return;
+clearBillForm();
+const items=b.items||[];
+const box=document.getElementById("rows-container");
+while(document.querySelectorAll(".table-row").length<items.length){
+const c=box.querySelector(".table-row").cloneNode(true);
+c.setAttribute("data-extra","1");
+box.appendChild(c)
+}
+document.getElementById("custName").value=b.customer||"";
+const iso=billISO(b);
+if(iso)document.getElementById("billDate").value=iso;
+document.querySelectorAll(".table-row").forEach((r,i)=>{
+const it=items[i];
+if(!it)return;
+r.querySelector(".i-name").value=it.name||"";
+r.querySelector(".i-qty").value=it.qty||"";
+r.querySelector(".i-price").value=(it.price===undefined||it.price===null)?"":it.price
+});
+editingBillId=b.id;
+showEditBanner(true);
+calcTotal();
+switchPage("bill-pg",document.querySelectorAll(".nav-btn")[0]);
+window.scrollTo(0,0)
+}
+
+/* ===== पूरा / बाकी चुनाव ===== */
+let payDue=false,vPayDue=false,payBoxBill=null,payBoxVoice=null;
+
+function mkPayBox(getDue,setDue){
+const d=document.createElement("div");
+d.style.cssText="display:flex;border:2px solid #94a3b8;border-radius:8px;overflow:hidden;margin-bottom:15px";
+d.innerHTML='<button type="button" data-v="0" style="flex:1;padding:12px;border:0;font-size:1rem;font-weight:bold;cursor:pointer">✓ पूरा</button><button type="button" data-v="1" style="flex:1;padding:12px;border:0;border-left:2px solid #94a3b8;font-size:1rem;font-weight:bold;cursor:pointer">बाकी</button>';
+const bs=d.querySelectorAll("button");
+d.paint=function(){
+const due=getDue();
+bs[0].style.background=due?"#fff":"#dcfce7";bs[0].style.color=due?"#64748b":"#14532d";
+bs[1].style.background=due?"#fee2e2":"#fff";bs[1].style.color=due?"#991b1b":"#64748b"
+};
+bs.forEach(b=>{b.onclick=function(){setDue(b.getAttribute("data-v")==="1");d.paint()}});
+d.paint();
+return d
+}
+
+payBoxBill=mkPayBox(()=>payDue,v=>{payDue=v});
+payBoxVoice=mkPayBox(()=>vPayDue,v=>{vPayDue=v});
+document.querySelector("#bill-pg .total-section").insertAdjacentElement("afterend",payBoxBill);
+document.getElementById("vTotalTxt").closest("div").insertAdjacentElement("afterend",payBoxVoice);
+
+const _saveBillOrig=saveBill;
+window.saveBill=function(){
+let before=[];
+try{before=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+const n0=before.length;
+_saveBillOrig();
+let after=[];
+try{after=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+if(after.length!==n0+1)return;
+const nb=after[after.length-1];
+if(payDue)nb.due=true;
+const editing=editingBillId!==null;
+if(editing){
+after.pop();
+const idx=after.findIndex(x=>String(x&&x.id)===String(editingBillId));
+nb.id=editingBillId;
+if(idx>=0)after[idx]=nb;else after.push(nb)
+}
+localStorage.setItem("my_bills",JSON.stringify(after));
+payDue=false;payBoxBill.paint();
+if(editing){
+editingBillId=null;
+showEditBanner(false);
+document.querySelectorAll(".table-row[data-extra]").forEach(r=>r.remove());
+switchPage("hist-pg",document.querySelectorAll(".nav-btn")[2])
+}
+};
+
+/* ===== कॉपी / पेस्ट ===== */
+function cpLoad(){
+let c=null;
+try{c=JSON.parse(localStorage.getItem("copied_bill")||"null")}catch(e){}
+return c&&Array.isArray(c.items)&&c.items.length?c:null
+}
+function cpLabel(){
+const c=cpLoad();
+document.getElementById("pasteBtn").textContent=c?"📋 पेस्ट ("+c.items.length+")":"📋 पेस्ट"
+}
+function cpFlash(id,msg,back){
+const b=document.getElementById(id);
+b.textContent=msg;
+setTimeout(()=>{b.textContent=back;cpLabel()},1500)
+}
+function copyBill(){
+const items=[];
+document.querySelectorAll(".table-row").forEach(r=>{
+const n=r.querySelector(".i-name").value.trim(),q=r.querySelector(".i-qty").value.trim(),p=r.querySelector(".i-price").value.trim();
+if(n||q||p)items.push({name:n,qty:q,price:p})
+});
+if(!items.length){alert("कॉपी करने के लिए पहले कम से कम एक आइटम भरें।");return}
+localStorage.setItem("copied_bill",JSON.stringify({cust:document.getElementById("custName").value.trim(),items:items}));
+cpFlash("copyBtn","✓ कॉपी हुआ","📑 कॉपी");
+cpLabel()
+}
+function pasteBill(){
+const c=cpLoad();
+if(!c){alert("पहले कोई बिल कॉपी करें।");return}
+const dirty=document.getElementById("custName").value.trim()||Array.from(document.querySelectorAll(".i-name")).some(i=>i.value.trim());
+if(dirty&&!confirm("अभी भरा हुआ डेटा बदल जाएगा। पेस्ट करें?"))return;
+clearBillForm();
+const box=document.getElementById("rows-container");
+while(document.querySelectorAll(".table-row").length<c.items.length){
+const r=box.querySelector(".table-row").cloneNode(true);
+r.setAttribute("data-extra","1");
+box.appendChild(r)
+}
+const cust=document.getElementById("custName");
+cust.value=c.cust||"";
+document.querySelectorAll(".table-row").forEach((r,i)=>{
+const it=c.items[i];
+if(!it)return;
+r.querySelector(".i-name").value=it.name||"";
+r.querySelector(".i-qty").value=it.qty||"";
+r.querySelector(".i-price").value=it.price===undefined||it.price===null?"":it.price
+});
+calcTotal();
+cpFlash("pasteBtn","✓ पेस्ट हुआ","📋 पेस्ट");
+try{cust.focus();cust.select()}catch(e){}
+}
+cpLabel();
+
+/* ===== नाम के सुझाव (कस्टमर और आइटम) ===== */
+let sgBox=null,sgInput=null,sgPicking=false;
+function sgNames(kind){
+let list=[];
+try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+const m={};
+list.forEach((b,bi)=>{
+const add=n=>{n=String(n||"").trim();if(!n)return;const e=m[n]||(m[n]={n:n,c:0,last:0});e.c++;e.last=Math.max(e.last,Number(b&&b.id)||bi)};
+if(kind==="cust")add(b&&b.customer);else((b&&b.items)||[]).forEach(i=>add(i&&i.name))
+});
+return Object.keys(m).map(k=>m[k])
+}
+function sgHide(){if(sgBox){sgBox.remove();sgBox=null}sgInput=null}
+function sgPos(){
+if(!sgBox||!sgInput)return;
+const r=sgInput.getBoundingClientRect();
+sgBox.style.left=(r.left+window.scrollX)+"px";
+sgBox.style.width=Math.max(r.width,200)+"px";
+const h=sgBox.offsetHeight;
+const above=r.bottom+h>window.innerHeight-10&&r.top>h;
+sgBox.style.top=(above?r.top+window.scrollY-h-2:r.bottom+window.scrollY+2)+"px"
+}
+function sgShow(inp,kind){
+const q=inp.value.toLowerCase().trim();
+if(!q){sgHide();return}
+const k=canonKey(q);
+let arr=sgNames(kind).filter(x=>x.n.toLowerCase()!==q&&hMatch(x.n,q));
+arr.forEach(x=>{x.s=(x.n.toLowerCase().startsWith(q)||(k&&canonKey(x.n).startsWith(k)))?0:1});
+arr.sort((a,b)=>a.s-b.s||b.c-a.c||b.last-a.last);
+arr=arr.slice(0,6);
+if(!arr.length){sgHide();return}
+if(!sgBox){
+sgBox=document.createElement("div");
+sgBox.style.cssText="position:absolute;z-index:10000;background:#fff;border:2px solid #94a3b8;border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.18);overflow:hidden";
+sgBox.addEventListener("mousedown",e=>e.preventDefault());
+document.body.appendChild(sgBox)
+}
+sgInput=inp;
+sgBox.innerHTML="";
+arr.forEach(x=>{
+const d=document.createElement("div");
+d.style.cssText="padding:11px 12px;border-bottom:1px solid #e2e8f0;cursor:pointer;font-size:1rem;color:#0f172a";
+d.textContent=x.n;
+d.addEventListener("click",()=>{
+sgPicking=true;
+inp.value=x.n;
+inp.dispatchEvent(new Event("input",{bubbles:true}));
+sgPicking=false;
+sgHide()
+});
+sgBox.appendChild(d)
+});
+sgPos()
+}
+function sgKind(t){
+if(!t||!t.matches)return null;
+if(t.matches("#custName,#vCustName,#sCust"))return "cust";
+if(t.matches("#sItem,.i-name,.vi-name"))return "item";
+return null
+}
+document.addEventListener("input",e=>{
+if(sgPicking)return;
+const k=sgKind(e.target);
+if(k)sgShow(e.target,k)
+});
+document.addEventListener("focusout",e=>{if(sgKind(e.target))setTimeout(sgHide,250)},true);
+window.addEventListener("scroll",sgPos,true);
+window.addEventListener("resize",sgPos);
+
+/* एडिट के समय बाकी का निशान */
+const _editHistOrig=editHistoryBill;
+window.editHistoryBill=function(id){
+const b=histFind(id);
+_editHistOrig(id);
+if(b&&editingBillId!==null){payDue=!!b.due;payBoxBill.paint()}
+};
+const _cancelEditOrig=cancelEditBill;
+window.cancelEditBill=function(){_cancelEditOrig();payDue=false;payBoxBill.paint()};
 </script>
 </body>
 </html>
