@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>स्मार्ट बिलिंग और इनवॉइस हिस्ट्री टूल</title>
+<script>try{if(localStorage.getItem("app_pin")){var _ls=document.createElement("style");_ls.id="lockHide";_ls.textContent="body{visibility:hidden}";document.head.appendChild(_ls)}}catch(e){}</script>
 
 <style>
 :root{--p-color:#2563eb;--s-color:#16a34a;--bg:#f8fafc;--bd:#94a3b8}
@@ -35,59 +36,9 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 .history-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:1rem}.history-item-name{flex:1;min-width:0}.history-item-qty{color:#64748b;white-space:nowrap}.history-item-price{font-weight:bold;white-space:nowrap}
 .voice-btn.listening{animation:voicePulse 1s infinite}@keyframes voicePulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
-
-/* Minimal biometric screen: plain background and one round fingerprint control only. */
-#biometricLock{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:#fff;padding:0}
-#biometricLock.hidden{display:none}
-#biometricUnlockBtn{display:flex;align-items:center;justify-content:center;width:104px;height:104px;padding:0;border:2px solid #111827;border-radius:50%;background:#fff;color:#111827;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-#biometricUnlockBtn:active{transform:scale(.96)}
-#biometricUnlockBtn:disabled{opacity:.7}
-#biometricUnlockBtn svg{display:block;width:56px;height:56px}
-
-
-/* Backup PIN panel appears only after a long-press on the fingerprint icon. */
-#pinLockPanel{position:fixed;inset:0;z-index:20001;display:none;align-items:center;justify-content:center;background:#fff;padding:24px}
-#pinLockPanel.visible{display:flex}
-#pinLockCard{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px;color:#111827}
-#pinLockCard h2{font-size:20px;text-align:center}
-#pinLockCard p{font-size:14px;text-align:center;color:#475569}
-#pinLockCard input{width:100%;padding:12px;border:1px solid #9ca3af;border-radius:8px;font-size:20px;text-align:center;letter-spacing:5px}
-#pinLockCard button{border:0;border-radius:8px;padding:12px;font-size:16px;cursor:pointer}
-#pinSubmitBtn{background:#111827;color:#fff}
-#pinBackBtn{background:#f1f5f9;color:#111827}
-#pinMessage{min-height:18px;color:#b91c1c;font-size:13px;text-align:center}
-
 </style>
 </head>
 <body>
-
-
-<div id="biometricLock" role="dialog" aria-modal="true" aria-label="Biometric lock">
-  <button id="biometricUnlockBtn" type="button" aria-label="Fingerprint unlock" onclick="requestBiometricUnlock()">
-    <svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
-      <path d="M32 8C19 8 10 17 10 29"/>
-      <path d="M42 11C50 15 54 22 54 31"/>
-      <path d="M18 30c0-9 6-15 14-15s14 6 14 15"/>
-      <path d="M24 30c0-5 3-8 8-8s8 3 8 8c0 13-2 22-7 29"/>
-      <path d="M31 30c0 11-1 18-4 24"/>
-      <path d="M12 35c1 7 3 13 6 18"/>
-      <path d="M52 38c-1 5-2 8-4 12"/>
-      <path d="M20 30c0 5 0 10 2 15"/>
-      <path d="M46 32c0 4 0 7-1 10"/>
-    </svg>
-  </button>
-</div>
-<div id="pinLockPanel" aria-modal="true" role="dialog" aria-label="Backup PIN">
-  <div id="pinLockCard">
-    <h2 id="pinTitle">बैकअप PIN</h2>
-    <p id="pinDescription">फिंगरप्रिंट के बजाय PIN इस्तेमाल करें</p>
-    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="PIN (4–8 अंक)" aria-label="PIN">
-    <input id="pinConfirmInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="PIN फिर से डालें" aria-label="Confirm PIN" style="display:none">
-    <div id="pinMessage" aria-live="polite"></div>
-    <button id="pinSubmitBtn" type="button" onclick="submitBackupPin()">जारी रखें</button>
-    <button id="pinBackBtn" type="button" onclick="closeBackupPin()">फिंगरप्रिंट पर वापस जाएँ</button>
-  </div>
-</div>
 
 <div class="swipe-handle" id="menuSwipeHandle"></div>
 <div class="sidebar-container" id="appSidebar">
@@ -95,11 +46,14 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 <h3 style="text-align:center;border-bottom:1px solid #334155;padding-bottom:10px;color:white">बिलिंग मेनू</h3>
 <button class="nav-btn active" onclick="switchPage('bill-pg',this)">📝 नया बिल बनाएँ</button>
 <button class="nav-btn" onclick="switchPage('voice-pg',this)">🎤 पुराना डेटा बोलकर भरें</button>
+<button class="nav-btn" onclick="switchPage('rep-pg',this)">📅 महीने की रिपोर्ट</button>
+<button class="nav-btn" onclick="openWA()">📲 WhatsApp पर बिल भेजें</button>
 <button class="nav-btn" onclick="switchPage('hist-pg',this)">📊 View History</button>
 <div>
 <label class="nav-btn" style="background:#5b21b6;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;cursor:pointer">📥 पूरा Backup Folder Load करें
 <input type="file" id="driveImportFile" webkitdirectory directory multiple onchange="loadFromDrive()" style="display:none"></label>
 <button class="nav-btn" style="background:#475569;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;margin-top:8px" onclick="saveToDrive()">📤 पूरा Backup Folder Save करें</button>
+<button class="nav-btn" style="background:#0f766e;color:white;text-align:center;font-size:.9rem;font-weight:bold;padding:10px;margin-top:8px" onclick="openSecurity()">🔒 सुरक्षा (PIN / फ़िंगरप्रिंट)</button>
 </div>
 </div>
 
@@ -146,6 +100,18 @@ body{background:var(--bg);display:flex;min-height:100vh;position:relative}
 <button class="btn-save" style="background:var(--p-color);color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:2" onclick="saveVoiceBill()">💾 बिल सेव करें</button>
 <button class="btn-save" style="background:#64748b;color:white;border:0;padding:12px;font-size:1rem;font-weight:bold;border-radius:6px;cursor:pointer;flex:1" onclick="clearVoice()">🗑️ साफ़ करें</button>
 </div>
+</div>
+
+<div id="rep-pg" class="page">
+<h2 style="margin-bottom:10px">📅 महीने की रिपोर्ट</h2>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px"><button type="button" onclick="repShift(-1)" style="background:#475569;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:1.1rem;cursor:pointer">◀</button><strong id="repMonthTxt" style="font-size:1.2rem"></strong><button type="button" onclick="repShift(1)" style="background:#475569;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:1.1rem;cursor:pointer">▶</button></div>
+<div id="repTiles" style="display:flex;gap:8px;margin-bottom:14px"></div>
+<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><input type="date" id="rDate" oninput="showReport()" style="padding:8px;border:2px solid #94a3b8;border-radius:6px"><button type="button" onclick="clearRepDate()" title="तारीख हटाएँ" style="background:#e2e8f0;border:0;border-radius:6px;padding:10px;cursor:pointer">❌</button></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px">
+<div class="form-group"><label>कस्टमर खोजें:</label><input type="text" id="rCust" oninput="showReport()" placeholder="जैसे: कल्पेश"></div>
+<div class="form-group"><label>आइटम खोजें:</label><input type="text" id="rItem" oninput="showReport()" placeholder="जैसे: धूप"></div>
+</div>
+<div id="rArea"></div>
 </div>
 
 <div id="hist-pg" class="page">
@@ -1148,7 +1114,7 @@ fg.parentNode.insertBefore(bn,fg)
 function clearBillForm(){
 document.querySelectorAll(".table-row[data-extra]").forEach(r=>r.remove());
 document.getElementById("custName").value="";
-document.querySelectorAll(".i-name,.i-qty,.i-price").forEach(el=>{el.value=""});
+document.querySelectorAll(".i-name,.i-qty,.i-price").forEach(el=>{el.value="";el.removeAttribute("data-auto")});
 calcTotal()
 }
 
@@ -1348,8 +1314,8 @@ sgPos()
 }
 function sgKind(t){
 if(!t||!t.matches)return null;
-if(t.matches("#custName,#vCustName,#sCust"))return "cust";
-if(t.matches("#sItem,.i-name,.vi-name"))return "item";
+if(t.matches("#custName,#vCustName,#sCust,#rCust"))return "cust";
+if(t.matches("#sItem,#rItem,.i-name,.vi-name"))return "item";
 return null
 }
 document.addEventListener("input",e=>{
@@ -1370,101 +1336,344 @@ if(b&&editingBillId!==null){payDue=!!b.due;payBoxBill.paint()}
 };
 const _cancelEditOrig=cancelEditBill;
 window.cancelEditBill=function(){_cancelEditOrig();payDue=false;payBoxBill.paint()};
+
+/* ===== रेट याद रखना (बिल वाला मुख्य पेज) ===== */
+function parseQty(q){
+const n=normQty(String(q||"").replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)).toLowerCase());
+const m=n.match(/^(\d+(?:\.\d+)?)\s*(\S*)$/);
+return m?{n:parseFloat(m[1]),u:m[2]}:null
+}
+function rateFor(name,unit){
+const k=canonKey(name);
+if(!k)return null;
+let list=[];
+try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+for(let i=list.length-1;i>=0;i--){
+const its=(list[i]&&list[i].items)||[];
+for(let j=0;j<its.length;j++){
+const it=its[j];
+if(canonKey(it.name)!==k)continue;
+const p=parseQty(it.qty),pr=parseFloat(it.price);
+if(p&&p.n>0&&p.u===unit&&pr>0)return pr/p.n
+}
+}
+return null
+}
+document.addEventListener("input",e=>{
+const t=e.target;
+if(!t.matches||!t.matches("#bill-pg .i-name,#bill-pg .i-qty,#bill-pg .i-price"))return;
+const row=t.closest(".table-row");
+if(!row)return;
+const pr=row.querySelector(".i-price");
+if(t.classList.contains("i-price")){pr.removeAttribute("data-auto");return}
+if(pr.value!==""&&!pr.hasAttribute("data-auto"))return;
+const q=parseQty(row.querySelector(".i-qty").value),nm=row.querySelector(".i-name").value.trim();
+const r=(q&&nm&&q.n>0)?rateFor(nm,q.u):null;
+if(r===null){
+if(pr.hasAttribute("data-auto")){pr.value="";pr.removeAttribute("data-auto");calcTotal()}
+return
+}
+pr.value=String(Math.round(r*q.n*100)/100);
+pr.setAttribute("data-auto","1");
+calcTotal()
+});
+
+/* ===== महीने की रिपोर्ट ===== */
+let repMonth=(function(){const t=new Date();return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")})();
+const MON_HI=["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
+function repShift(n){
+let y=+repMonth.split("-")[0],m=+repMonth.split("-")[1]+n;
+if(m<1){m=12;y--}
+if(m>12){m=1;y++}
+repMonth=y+"-"+String(m).padStart(2,"0");
+document.getElementById("rDate").value="";
+showReport()
+}
+function clearRepDate(){document.getElementById("rDate").value="";showReport()}
+function repTile(label,val,bg,fg){
+return `<div style="flex:1;background:${bg};border-radius:8px;padding:10px"><div style="font-size:.8rem;color:${fg}">${label}</div><div style="font-size:1.1rem;font-weight:bold;color:${fg}">${val}</div></div>`
+}
+function showReport(){
+const y=+repMonth.split("-")[0],m=+repMonth.split("-")[1];
+document.getElementById("repMonthTxt").textContent=MON_HI[m-1]+" "+y;
+const rd=document.getElementById("rDate");
+rd.min=repMonth+"-01";
+rd.max=repMonth+"-"+String(new Date(y,m,0).getDate()).padStart(2,"0");
+const sC=document.getElementById("rCust").value.toLowerCase().trim();
+const sI=document.getElementById("rItem").value.toLowerCase().trim();
+const dt=rd.value;
+let list=[];
+try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+if(!Array.isArray(list))list=[];
+const mine=list.filter(b=>billISO(b).indexOf(repMonth)===0&&hMatch(b.customer,sC)&&(!sI||(b.items||[]).some(i=>hMatch(i.name,sI)))&&(!dt||billISO(b)===dt)).sort(histRecent);
+const total=mine.reduce((s,b)=>s+billTotal(b),0);
+const dueAmt=mine.filter(b=>b.due).reduce((s,b)=>s+billTotal(b),0);
+document.getElementById("repTiles").innerHTML=repTile("कुल बिल",mine.length,"#f1f5f9","#334155")+repTile("कुल बिक्री","₹"+total.toLocaleString("en-IN"),"#dbeafe","#1e3a8a")+repTile("कुल बाकी","₹"+dueAmt.toLocaleString("en-IN"),dueAmt>0?"#fee2e2":"#dcfce7",dueAmt>0?"#991b1b":"#14532d");
+let h="";
+mine.forEach(b=>{h+=billCardHtml(b,sI)});
+document.getElementById("rArea").innerHTML=h||'<p style="text-align:center;color:#64748b;padding:20px">इस महीने कोई बिल नहीं मिला।</p>'
+}
+const _showHistOrig=showHistory;
+window.showHistory=function(){
+_showHistOrig();
+if(document.getElementById("rep-pg").classList.contains("active"))showReport()
+};
+const _switchPage2=window.switchPage;
+window.switchPage=function(id,btn){
+const r=_switchPage2(id,btn);
+if(id==="rep-pg")showReport();
+return r
+};
+
+/* ===== WhatsApp पर PDF बिल ===== */
+let waPending=null;
+function waPhones(){try{return JSON.parse(localStorage.getItem("cust_phones")||"{}")}catch(e){return {}}}
+function waNorm(raw){
+let d=String(raw||"").replace(/\D/g,"");
+if(d.length===10)d="91"+d;
+else if(d.length===11&&d[0]==="0")d="91"+d.slice(1);
+return /^\d{11,15}$/.test(d)?d:null
+}
+function secDlg(html){
+let d=document.getElementById("secDlg");
+if(!d){
+d=document.createElement("div");
+d.id="secDlg";
+d.style.cssText="position:fixed;inset:0;z-index:99998;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:16px";
+document.body.appendChild(d)
+}
+d.innerHTML='<div style="background:#fff;border-radius:10px;padding:16px;width:100%;max-width:360px;max-height:90vh;overflow:auto">'+html+'</div>'
+}
+function secClose(){const d=document.getElementById("secDlg");if(d)d.remove()}
+const DLG_IN='width:100%;padding:12px;margin-bottom:8px;border:2px solid #94a3b8;border-radius:6px;font-size:1.05rem;box-sizing:border-box';
+const DLG_BTN='border:0;border-radius:6px;padding:12px;font-weight:bold;font-size:1rem;cursor:pointer;color:#fff';
+function openWA(){
+toggleMobileMenu(false);
+let list=[];
+try{list=JSON.parse(localStorage.getItem("my_bills")||"[]")}catch(e){}
+const bills=list.slice().sort(histRecent).slice(0,40);
+if(!bills.length){alert("पहले कोई बिल सेव करें।");return}
+const opts=bills.map(b=>'<option value="'+escapeHtml(String(b.id))+'">'+escapeHtml(b.customer||"")+" | "+escapeHtml(b.date||"")+" | ₹"+billTotal(b).toLocaleString("en-IN")+'</option>').join("");
+secDlg('<h3 style="margin:0 0 10px">📲 WhatsApp पर बिल भेजें</h3><label style="font-weight:bold;font-size:.9rem">कौन-सा बिल:</label><select id="waBill" onchange="waFill()" style="'+DLG_IN+'">'+opts+'</select><label style="font-weight:bold;font-size:.9rem">कस्टमर का मोबाइल नंबर:</label><input id="waNum" type="tel" inputmode="numeric" placeholder="10 अंक का नंबर" style="'+DLG_IN+'"><div style="font-size:.8rem;color:#64748b;margin-bottom:10px">PDF बनकर उसी नंबर की WhatsApp चैट में खुलेगी, आपको सिर्फ़ एक बार भेजें दबाना होगा।</div><div style="display:flex;gap:8px"><button type="button" onclick="waSend()" style="'+DLG_BTN+';background:#16a34a;flex:2">📲 भेजें</button><button type="button" onclick="secClose()" style="'+DLG_BTN+';background:#64748b;flex:1">रद्द</button></div>');
+waFill()
+}
+function waFill(){
+const b=histFind(document.getElementById("waBill").value);
+const inp=document.getElementById("waNum");
+inp.value="";
+if(!b)return;
+const ph=waPhones()[canonKey(b.customer)];
+if(ph)inp.value=String(ph).replace(/^91/,"")
+}
+function waText(b,num){
+let t="*"+(b.customer||"")+"*\nदिनांक: "+(b.date||"")+"\n\n";
+(b.items||[]).forEach((i,k)=>{t+=(k+1)+". "+(i.name||"")+" ("+(i.qty||"")+") - ₹"+Number(i.price||0)+"\n"});
+t+="\nकुल: ₹"+billTotal(b);
+if(b.due)t+="\n*बाकी: ₹"+billTotal(b)+"*";
+const url="https://wa.me/"+num+"?text="+encodeURIComponent(t);
+if(window.AndroidShare&&window.AndroidShare.openUrl)window.AndroidShare.openUrl(url);else window.open(url,"_blank")
+}
+function waSend(){
+const id=document.getElementById("waBill").value;
+const num=waNorm(document.getElementById("waNum").value);
+if(!num){alert("सही मोबाइल नंबर डालें (10 अंक)।");return}
+const b=histFind(id);
+if(!b)return;
+const m=waPhones();
+m[canonKey(b.customer)]=num;
+localStorage.setItem("cust_phones",JSON.stringify(m));
+secClose();
+if(window.AndroidShare&&window.AndroidShare.sendPdf){
+waPending={num:num,b:b};
+pdfHistoryBill(id);
+setTimeout(()=>{
+try{window.AndroidShare.sendPdf("Bill_"+id,num)}catch(e){window.onShareResult(false,String(e))}
+},800)
+}else waText(b,num)
+}
+window.onShareResult=function(ok,msg){
+const pv=document.getElementById("invoicePreview");
+if(pv)pv.remove();
+const w=waPending;
+waPending=null;
+if(!ok&&w&&confirm("PDF भेजना नहीं हो पाया ("+msg+"). टेक्स्ट मैसेज के रूप में भेजें?"))waText(w.b,w.num)
+};
+
+/* ===== PIN + फ़िंगरप्रिंट ===== */
+let lkBuf="",lkWrong=0,lkUntil=0,lkHiddenAt=0,lkOpen=false,bioCb=null;
+const hasPin=()=>!!localStorage.getItem("app_pin");
+const bioOn=()=>localStorage.getItem("app_bio")==="1";
+function bioAvail(){try{return !!(window.AndroidBio&&window.AndroidBio.available())}catch(e){return false}}
+window.onBioResult=function(ok,msg){const f=bioCb;bioCb=null;if(f)f(ok,msg)};
+function bioAsk(cb){
+bioCb=cb;
+try{window.AndroidBio.authenticate()}catch(e){bioCb=null;cb(false,String(e))}
+}
+
+async function pinHash(p){
+const str="billapp-v1:"+p;
+try{
+if(window.crypto&&crypto.subtle){
+const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));
+return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("")
+}
+}catch(e){}
+let h1=0xdeadbeef,h2=0x41c6ce57;
+for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}
+h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+return "f"+(4294967296*(2097151&h2)+(h1>>>0)).toString(16)
+}
+
+function lkMsg(t){const m=document.getElementById("lkMsg");if(m)m.textContent=t}
+function lkDots(){
+const d=document.getElementById("lkDots");
+d.innerHTML="";
+for(let i=0;i<4;i++){
+const s=document.createElement("span");
+s.style.cssText="width:16px;height:16px;border-radius:50%;border:2px solid #fff;background:"+(i<lkBuf.length?"#fff":"transparent");
+d.appendChild(s)
+}
+}
+function lkBuild(){
+let el=document.getElementById("lockScreen");
+if(el)return el;
+el=document.createElement("div");
+el.id="lockScreen";
+el.style.cssText="position:fixed;inset:0;z-index:100000;background:#0f172a;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;visibility:visible;touch-action:manipulation";
+el.innerHTML='<div style="font-size:2.4rem">🔒</div><div id="lkMsg" style="font-size:1.1rem;font-weight:bold;min-height:1.4em;text-align:center">PIN डालें</div><div id="lkDots" style="display:flex;gap:14px;margin-bottom:6px"></div><div id="lkPad" style="display:grid;grid-template-columns:repeat(3,72px);gap:14px"></div>';
+document.body.appendChild(el);
+const pad=el.querySelector("#lkPad");
+["1","2","3","4","5","6","7","8","9","bio","0","del"].forEach(k=>{
+const b=document.createElement("button");
+b.type="button";
+b.style.cssText="width:72px;height:72px;border-radius:50%;border:0;background:#1e293b;color:#fff;font-size:1.6rem;cursor:pointer";
+if(k==="bio"){
+b.textContent="🖐";
+b.id="lkBioBtn";
+b.onclick=lkBio
+}else if(k==="del"){
+b.textContent="⌫";
+b.onclick=()=>{lkBuf=lkBuf.slice(0,-1);lkDots()}
+}else{
+b.textContent=k;
+b.onclick=()=>lkPress(k)
+}
+pad.appendChild(b)
+});
+return el
+}
+async function lkPress(k){
+if(Date.now()<lkUntil)return;
+if(lkBuf.length>=4)return;
+lkBuf+=k;
+lkDots();
+if(lkBuf.length<4)return;
+const ok=(await pinHash(lkBuf))===localStorage.getItem("app_pin");
+if(ok){lkUnlock();return}
+lkBuf="";
+lkWrong++;
+lkDots();
+try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}
+if(lkWrong>=5){
+lkWrong=0;
+lkUntil=Date.now()+30000;
+lkMsg("5 बार गलत। 30 सेकंड बाद कोशिश करें");
+setTimeout(()=>lkMsg("PIN डालें"),30000)
+}else lkMsg("गलत PIN, दोबारा डालें")
+}
+function lkShow(){
+if(!hasPin())return;
+const el=lkBuild();
+el.style.display="flex";
+lkBuf="";
+lkMsg("PIN डालें");
+lkDots();
+const bb=document.getElementById("lkBioBtn");
+bb.style.visibility=(bioOn()&&bioAvail())?"visible":"hidden";
+if(!document.getElementById("lockHide")){
+const st=document.createElement("style");
+st.id="lockHide";
+st.textContent="body{visibility:hidden}";
+document.head.appendChild(st)
+}
+lkOpen=true;
+setTimeout(lkBio,300)
+}
+function lkUnlock(){
+const el=document.getElementById("lockScreen");
+if(el)el.style.display="none";
+const st=document.getElementById("lockHide");
+if(st)st.remove();
+lkOpen=false;lkBuf="";lkWrong=0
+}
+function lkBio(){
+if(!lkOpen||!bioOn()||!bioAvail())return;
+bioAsk(ok=>{if(ok&&lkOpen)lkUnlock()})
+}
+document.addEventListener("visibilitychange",()=>{
+if(document.hidden)lkHiddenAt=Date.now();
+else if(hasPin()&&!lkOpen&&lkHiddenAt&&Date.now()-lkHiddenAt>60000)lkShow()
+});
+
+function openSecurity(){toggleMobileMenu(false);secMenu()}
+function secField(id,ph){return '<input id="'+id+'" type="password" inputmode="numeric" maxlength="4" placeholder="'+ph+'" style="'+DLG_IN+'">'}
+function secMenu(){
+const pin=hasPin();
+let h='<h3 style="margin:0 0 10px">🔒 सुरक्षा (PIN / फ़िंगरप्रिंट)</h3>';
+if(!pin){
+h+='<div style="background:#fef9c3;border:1px solid #facc15;border-radius:6px;padding:8px;font-size:.85rem;margin-bottom:10px">⚠ PIN भूल गए तो ऐप का डेटा मिटाए बिना खुलना मुश्किल होगा। पहले 📤 बैकअप ले लें।</div>'+secField("secA","नया PIN (4 अंक)")+secField("secB","PIN दोबारा डालें")+'<div style="display:flex;gap:8px"><button type="button" onclick="secSet()" style="'+DLG_BTN+';background:#0f766e;flex:2">PIN सेट करें</button><button type="button" onclick="secClose()" style="'+DLG_BTN+';background:#64748b;flex:1">बंद</button></div>'
+}else{
+h+='<div style="color:#14532d;font-weight:bold;margin-bottom:10px">✓ PIN चालू है</div>';
+h+='<button type="button" onclick="secChangeUi()" style="'+DLG_BTN+';background:#2563eb;width:100%;margin-bottom:8px">🔑 PIN बदलें</button>';
+if(bioAvail()){
+h+='<button type="button" onclick="secBioToggle()" style="'+DLG_BTN+';background:'+(bioOn()?"#16a34a":"#475569")+';width:100%;margin-bottom:8px">🖐 फ़िंगरप्रिंट/फेस: '+(bioOn()?"चालू (बंद करें)":"बंद (चालू करें)")+'</button>'
+}else{
+h+='<div style="font-size:.8rem;color:#64748b;margin-bottom:8px">इस फ़ोन में फ़िंगरप्रिंट/फेस उपलब्ध नहीं है, या फ़ोन की Settings में जोड़ा नहीं गया है।</div>'
+}
+h+='<button type="button" onclick="secRemoveUi()" style="'+DLG_BTN+';background:#dc2626;width:100%;margin-bottom:8px">🔓 PIN हटाएँ</button><button type="button" onclick="secClose()" style="'+DLG_BTN+';background:#64748b;width:100%">बंद करें</button>'
+}
+secDlg(h)
+}
+async function secSet(){
+const a=document.getElementById("secA").value,b=document.getElementById("secB").value;
+if(!/^\d{4}$/.test(a)){alert("PIN ठीक 4 अंक का होना चाहिए।");return}
+if(a!==b){alert("दोनों PIN एक जैसे नहीं हैं।");return}
+localStorage.setItem("app_pin",await pinHash(a));
+alert("✅ PIN सेट हो गया।");
+secMenu()
+}
+function secChangeUi(){
+secDlg('<h3 style="margin:0 0 10px">🔑 PIN बदलें</h3>'+secField("secO","पुराना PIN")+secField("secA","नया PIN (4 अंक)")+secField("secB","नया PIN दोबारा")+'<div style="display:flex;gap:8px"><button type="button" onclick="secChange()" style="'+DLG_BTN+';background:#2563eb;flex:2">बदलें</button><button type="button" onclick="secMenu()" style="'+DLG_BTN+';background:#64748b;flex:1">वापस</button></div>')
+}
+async function secChange(){
+const o=document.getElementById("secO").value,a=document.getElementById("secA").value,b=document.getElementById("secB").value;
+if((await pinHash(o))!==localStorage.getItem("app_pin")){alert("पुराना PIN गलत है।");return}
+if(!/^\d{4}$/.test(a)){alert("नया PIN ठीक 4 अंक का होना चाहिए।");return}
+if(a!==b){alert("दोनों नए PIN एक जैसे नहीं हैं।");return}
+localStorage.setItem("app_pin",await pinHash(a));
+alert("✅ PIN बदल गया।");
+secMenu()
+}
+function secRemoveUi(){
+secDlg('<h3 style="margin:0 0 10px">🔓 PIN हटाएँ</h3>'+secField("secO","मौजूदा PIN डालें")+'<div style="display:flex;gap:8px"><button type="button" onclick="secRemove()" style="'+DLG_BTN+';background:#dc2626;flex:2">हटाएँ</button><button type="button" onclick="secMenu()" style="'+DLG_BTN+';background:#64748b;flex:1">वापस</button></div>')
+}
+async function secRemove(){
+const o=document.getElementById("secO").value;
+if((await pinHash(o))!==localStorage.getItem("app_pin")){alert("PIN गलत है।");return}
+localStorage.removeItem("app_pin");
+localStorage.removeItem("app_bio");
+alert("PIN हटा दिया गया।");
+secClose()
+}
+function secBioToggle(){
+if(bioOn()){localStorage.removeItem("app_bio");secMenu();return}
+bioAsk(ok=>{
+if(ok){localStorage.setItem("app_bio","1");secMenu()}
+else alert("पुष्टि नहीं हुई। फ़िंगरप्रिंट/फेस चालू नहीं किया गया।")
+})
+}
+if(hasPin())lkShow();
 </script>
-
-<script>
-/* Biometric lock with an optional native-stored backup PIN. Initial lock screen stays icon-only. */
-(function () {
-  let biometricUnlocked = false;
-  let biometricRequestInProgress = false;
-  let pinSetupMode = false;
-  let pinBusy = false;
-  let retryAfterPrompt = false;
-  let longPressTimer = null;
-  let longPressTriggered = false;
-  const lock = () => document.getElementById("biometricLock");
-  const button = () => document.getElementById("biometricUnlockBtn");
-  const pinPanel = () => document.getElementById("pinLockPanel");
-  const pinInput = () => document.getElementById("pinInput");
-  const pinConfirm = () => document.getElementById("pinConfirmInput");
-  const pinMessage = () => document.getElementById("pinMessage");
-  const nativePin = () => window.AndroidBiometric && typeof window.AndroidBiometric.isPinSet === "function";
-
-  function showLock() {
-    biometricUnlocked = false;
-    if (lock()) lock().classList.remove("hidden");
-    if (pinPanel()) pinPanel().classList.remove("visible");
-    document.body.classList.add("biometric-locked");
-  }
-  function unlockApp() {
-    biometricUnlocked = true;
-    biometricRequestInProgress = false;
-    if (lock()) lock().classList.add("hidden");
-    if (pinPanel()) pinPanel().classList.remove("visible");
-    document.body.classList.remove("biometric-locked");
-    if (button()) button().disabled = false;
-  }
-  window.onBiometricResult = function (success) {
-    biometricRequestInProgress = false;
-    if (button()) button().disabled = false;
-    if (success === true) unlockApp(); else showLock();
-  };
-  window.onBiometricAttemptFailed = function () {};
-  window.requestBiometricUnlock = function () {
-    if (biometricUnlocked || biometricRequestInProgress) return;
-    if (!window.AndroidBiometric || typeof window.AndroidBiometric.authenticate !== "function") { showLock(); return; }
-    biometricRequestInProgress = true;
-    if (button()) button().disabled = true;
-    try { window.AndroidBiometric.authenticate(); }
-    catch (e) { biometricRequestInProgress = false; if (button()) button().disabled = false; showLock(); }
-  };
-  function openBackupPin() {
-    if (biometricUnlocked || pinBusy) return;
-    if (!nativePin()) { return; }
-    try { pinSetupMode = !window.AndroidBiometric.isPinSet(); }
-    catch (e) { pinSetupMode = true; }
-    document.getElementById("pinTitle").textContent = pinSetupMode ? "बैकअप PIN सेट करें" : "बैकअप PIN डालें";
-    document.getElementById("pinDescription").textContent = pinSetupMode ? "4 से 8 अंकों का PIN बनाएँ" : "ऐप खोलने के लिए अपना PIN डालें";
-    pinConfirm().style.display = pinSetupMode ? "block" : "none";
-    pinInput().value = ""; pinConfirm().value = ""; pinMessage().textContent = "";
-    document.getElementById("pinSubmitBtn").textContent = pinSetupMode ? "PIN सेव करें" : "अनलॉक करें";
-    lock().classList.add("hidden"); pinPanel().classList.add("visible");
-    setTimeout(() => pinInput().focus(), 80);
-  }
-  window.closeBackupPin = function () { pinPanel().classList.remove("visible"); lock().classList.remove("hidden"); pinInput().value = ""; pinConfirm().value = ""; };
-  window.submitBackupPin = function () {
-    if (pinBusy || !nativePin()) return;
-    const pin = pinInput().value.trim();
-    if (!/^\d{4,8}$/.test(pin)) { pinMessage().textContent = "PIN 4 से 8 अंकों का होना चाहिए।"; return; }
-    pinBusy = true;
-    try {
-      if (pinSetupMode) {
-        if (pinConfirm().value.trim() !== pin) { pinMessage().textContent = "दोनों PIN एक जैसे नहीं हैं।"; pinBusy = false; return; }
-        const ok = window.AndroidBiometric.setPin(pin);
-        if (ok) unlockApp(); else pinMessage().textContent = "PIN सेव नहीं हो पाया। दोबारा कोशिश करें।";
-      } else {
-        if (window.AndroidBiometric.verifyPin(pin)) unlockApp();
-        else pinMessage().textContent = "PIN गलत है। दोबारा कोशिश करें।";
-      }
-    } catch (e) { pinMessage().textContent = "PIN सुविधा उपलब्ध नहीं है।"; }
-    pinBusy = false;
-  };
-  const fp = button();
-  if (fp) {
-    fp.addEventListener("contextmenu", e => { e.preventDefault(); openBackupPin(); });
-    fp.addEventListener("touchstart", () => { longPressTriggered = false; longPressTimer = setTimeout(() => { longPressTriggered = true; openBackupPin(); }, 700); }, {passive:true});
-    ["touchend","touchcancel"].forEach(evt => fp.addEventListener(evt, () => { if (longPressTimer) clearTimeout(longPressTimer); }, {passive:true}));
-    fp.addEventListener("click", e => { if (longPressTriggered) { e.preventDefault(); longPressTriggered = false; return; } window.requestBiometricUnlock(); });
-  }
-  document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden" && biometricUnlocked) { retryAfterPrompt = true; showLock(); }
-    else if (document.visibilityState === "visible" && !biometricUnlocked && retryAfterPrompt) retryAfterPrompt = false;
-  });
-  function startLocked() { showLock(); window.requestBiometricUnlock(); }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startLocked, { once: true });
-  else startLocked();
-})();
-</script>
-
 </body>
 </html>
