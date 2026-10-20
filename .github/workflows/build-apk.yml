@@ -49,7 +49,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y imagemagick
           mkdir -p assets
-          magick assets/logo.jpeg -resize 1024x1024^ -gravity center -extent 1024x1024 assets/icon.png
+          convert assets/logo.jpeg -resize 1024x1024^ -gravity center -extent 1024x1024 assets/icon.png
 
       - name: Generate App Icons
         run: npx capacitor-assets generate --android
