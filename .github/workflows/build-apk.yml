@@ -44,6 +44,16 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Prepare JPEG App Icon
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          mkdir -p assets
+          magick assets/logo.jpeg -resize 1024x1024^ -gravity center -extent 1024x1024 assets/icon.png
+
+      - name: Generate App Icons
+        run: npx capacitor-assets generate --android
+
       - name: Add microphone permission
         run: |
           sed -i '/<manifest /a\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
