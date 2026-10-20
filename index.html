@@ -1500,7 +1500,7 @@ if(!ok&&w&&confirm("PDF भेजना नहीं हो पाया ("+msg+
 };
 
 /* ===== PIN + फ़िंगरप्रिंट ===== */
-let lkBuf="",lkWrong=0,lkUntil=0,lkHiddenAt=0,lkOpen=false,bioCb=null;
+let lkBuf="",lkWrong=0,lkUntil=0,lkSkipAt=0,lkOpen=false,bioCb=null;
 const hasPin=()=>!!localStorage.getItem("app_pin");
 const bioOn=()=>localStorage.getItem("app_bio")==="1";
 function bioAvail(){try{return !!(window.AndroidBio&&window.AndroidBio.available())}catch(e){return false}}
@@ -1582,7 +1582,7 @@ lkMsg("5 बार गलत। 30 सेकंड बाद कोशिश क
 setTimeout(()=>lkMsg("PIN डालें"),30000)
 }else lkMsg("गलत PIN, दोबारा डालें")
 }
-function lkShow(){
+function lkShow(noBio){
 if(!hasPin())return;
 const el=lkBuild();
 el.style.display="flex";
@@ -1598,7 +1598,7 @@ st.textContent="body{visibility:hidden}";
 document.head.appendChild(st)
 }
 lkOpen=true;
-setTimeout(lkBio,300)
+if(!noBio)setTimeout(lkBio,300)
 }
 function lkUnlock(){
 const el=document.getElementById("lockScreen");
@@ -1611,9 +1611,29 @@ function lkBio(){
 if(!lkOpen||!bioOn()||!bioAvail())return;
 bioAsk(ok=>{if(ok&&lkOpen)lkUnlock()})
 }
+/* ऐप से बाहर जाते ही लॉक (रिसेंट/होम/स्क्रीन बंद); जान-बूझकर बाहर जाने (प्रिंट, फ़ोल्डर, माइक अनुमति, WhatsApp) पर नहीं */
 document.addEventListener("visibilitychange",()=>{
-if(document.hidden)lkHiddenAt=Date.now();
-else if(hasPin()&&!lkOpen&&lkHiddenAt&&Date.now()-lkHiddenAt>60000)lkShow()
+if(!hasPin())return;
+if(document.hidden){
+if(lkOpen)return;
+if(Date.now()-lkSkipAt<120000)return;
+lkShow(true)
+}else if(lkOpen){
+setTimeout(lkBio,200)
+}
+});
+document.addEventListener("click",e=>{
+if(e.target&&e.target.closest&&e.target.closest("label.nav-btn,input[type=file]"))lkSkipAt=Date.now()
+},true);
+["AndroidPrint:print","AndroidBackup:pickFolder","AndroidSpeech:startContinuous","AndroidShare:sendPdf","AndroidShare:openUrl"].forEach(x=>{
+const o=x.split(":")[0],m=x.split(":")[1];
+try{
+const obj=window[o];
+if(obj&&obj[m]){
+const f=obj[m].bind(obj);
+obj[m]=function(){lkSkipAt=Date.now();return f.apply(null,arguments)}
+}
+}catch(e){}
 });
 
 function openSecurity(){toggleMobileMenu(false);secMenu()}
